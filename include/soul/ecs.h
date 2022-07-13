@@ -41,12 +41,13 @@ struct component
     COMPONENT
 };
 
-typedef void(*component_callback_t)(void *instance);
+typedef void(*component_callback_t)(void *instance, void *data);
 
 struct component_descriptor
 {
     struct string           name;
     struct list             instances; // struct component
+    void *                  callback_data;
     component_callback_t    init;
     component_callback_t    entered_tree;
     component_callback_t    cleanup;
@@ -70,13 +71,14 @@ struct ecs_service
 struct component_registry_info
 {
     const char *            name;
+    void *                  callback_data;
     component_callback_t    init;
     component_callback_t    entered_tree;
     component_callback_t    cleanup;
     size_t                  struct_size;
 };
 
-void                            ecs_service_init_resource(struct soul_instance *instance);
+void                            ecs_service_create_resource(struct soul_instance *instance);
 struct entity *                 entity_create(struct ecs_service *ecs,
                                               const char *name,
                                               struct context *context,

@@ -1,5 +1,6 @@
 #include <soul/core.h>
 #include <soul/services.h>
+#include <soul/components.h>
 
 struct soul_instance *soul_init_instance(struct soul_instance_init_info *init_info)
 {
@@ -8,7 +9,8 @@ struct soul_instance *soul_init_instance(struct soul_instance_init_info *init_in
     list_init(&instance->resources, sizeof(struct resource));
     list_init(&instance->callbacks, sizeof(struct callback_order));
 
-    services_init_all(instance);
+    services_create_all(instance);
+    components_register_all(instance);
 
     return instance;
 }

@@ -3,7 +3,7 @@
 #include <soul/resource.h>
 #include <soul/execution_order.h>
 #include <soul/ui/window.h>
-#include <soul/graphics/graphics.h>
+#include <soul/graphics/core.h>
 
 static void poll_events(struct window_service *service)
 {
@@ -14,11 +14,12 @@ static void poll_events(struct window_service *service)
 
     list_for_each (struct window, window, service->windows) {
         if (glfwWindowShouldClose(window->glfw_handle)) {
-            struct window_close_request close_request = { 0, window };
-            callbacks_dispatch(&window->on_close_requested, &close_request);
-
-            if (close_request.close)
+            if (window->close_requested) {
+                if (window->close_requested(window))
+                    list_push(&to_destroy, &window);
+            } else {
                 list_push(&to_destroy, &window);
+            }
         }
     }
 
@@ -33,6 +34,7 @@ static void clear(struct window_service *service)
 {
     list_for_each (struct window *, p_window, service->hardware_acceleration_enabled_windows) {
         window_bind(*p_window);
+        graphics_set_clear_color(vec4f(1.0, 0.0, 0.0, 1.0));
         graphics_clear();
     }
 }
@@ -48,7 +50,6 @@ static void cleanup_window(struct window *window)
 {
     string_destroy(window->title);
 
-    list_destroy(&window->on_close_requested);
     list_destroy(&window->on_destroy);
     list_destroy(&window->on_resize);
 
@@ -65,7 +66,7 @@ static void deallocate_service(struct window_service *service)
     list_destroy(&service->windows);
 }
 
-void window_service_init_resource(struct soul_instance *soul_instance)
+void window_service_create_resource(struct soul_instance *soul_instance)
 {
     struct window_service *service = resource_create(
         soul_instance,
@@ -102,10 +103,15 @@ void window_service_init_resource(struct soul_instance *soul_instance)
     );
 
     glfwInit();
+
+    struct window_create_info window_create_info = NEW_WINDOW_CREATE_INFO;
+    service->main_window = window_create(service, &window_create_info);
+
+    glfwMakeContextCurrent(service->main_window->glfw_handle);
 }
 
-struct window * window_create(struct window_service *service,
-                              struct window_create_info *create_info)
+struct window *window_create(struct window_service *service,
+                             struct window_create_info *create_info)
 {
     struct window *window = list_alloc(&service->windows);
 
@@ -116,7 +122,6 @@ struct window * window_create(struct window_service *service,
     window->hardware_acceleration_enabled   = create_info->hardware_acceleration_enabled;
     window->visible                         = create_info->visible;
 
-    list_init(&window->on_close_requested, sizeof(struct callback));
     list_init(&window->on_destroy, sizeof(struct callback));
     list_init(&window->on_resize, sizeof(struct callback));
 

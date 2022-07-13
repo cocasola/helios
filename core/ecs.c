@@ -3,7 +3,7 @@
 
 static void destroy_component_instance(struct component_reference ref)
 {
-    ref.descriptor->cleanup(ref.instance);
+    ref.descriptor->cleanup(ref.instance, ref.descriptor->callback_data);
     list_remove(&ref.descriptor->instances, ref.instance);
 }
 
@@ -51,7 +51,7 @@ static void deallocate_service(struct ecs_service *ecs)
     list_destroy(&ecs->transforms);
 }
 
-void ecs_service_init_resource(struct soul_instance *instance)
+void ecs_service_create_resource(struct soul_instance *instance)
 {
     struct ecs_service *ecs = resource_create(
         instance,
@@ -135,8 +135,8 @@ void *component_instance(struct ecs_service *ecs, struct entity *entity, const c
     instance->entity    = entity;
     instance->transform = entity->transform;
 
-    descriptor->init(instance);
-    descriptor->entered_tree(instance);
+    descriptor->init(instance, descriptor->callback_data);
+    descriptor->entered_tree(instance, descriptor->callback_data);
 
     struct component_reference ref = {
         .descriptor = descriptor,
@@ -182,6 +182,7 @@ struct component_descriptor *component_register(struct ecs_service *ecs,
     list_init(&descriptor->instances, info->struct_size);
 
     descriptor->name            = string_create(info->name);
+    descriptor->callback_data   = info->callback_data;
     descriptor->init            = info->init;
     descriptor->entered_tree    = info->entered_tree;
     descriptor->cleanup         = info->cleanup;

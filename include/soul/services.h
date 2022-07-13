@@ -3,6 +3,6 @@
 
 #include "core.h"
 
-void services_init_all(struct soul_instance *soul_instance);
+void services_create_all(struct soul_instance *soul_instance);
 
 #endif // SERVICES_H

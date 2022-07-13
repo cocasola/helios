@@ -6,7 +6,8 @@
  c:\soul\include\soul\core.h c:\soul\include\soul\typedefs.h \
  c:\soul\include\soul\callbacks.h c:\soul\include\soul\list.h \
  c:\soul\include\soul\string.h c:\soul\include\soul\math\vector.h \
- ../include/soul/graphics/graphics.h c:\soul\include\soul\math\vector.h
+ ../include/soul/graphics/core.h c:\soul\include\soul\list.h \
+ c:\soul\include\soul\core.h c:\soul\include\soul\math\vector.h
 
 ../include/GL/glew.h:
 
@@ -42,6 +43,10 @@ c:\soul\include\soul\string.h:
 
 c:\soul\include\soul\math\vector.h:
 
-../include/soul/graphics/graphics.h:
+../include/soul/graphics/core.h:
+
+c:\soul\include\soul\list.h:
+
+c:\soul\include\soul\core.h:
 
 c:\soul\include\soul\math\vector.h:
