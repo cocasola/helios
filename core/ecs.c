@@ -3,7 +3,9 @@
 
 static void destroy_component_instance(struct component_reference ref)
 {
-    ref.descriptor->cleanup(ref.instance, ref.descriptor->callback_data);
+    if (ref.descriptor->cleanup)
+        ref.descriptor->cleanup(ref.instance, ref.descriptor->callback_data);
+
     list_remove(&ref.descriptor->instances, ref.instance);
 }
 
@@ -29,6 +31,7 @@ static void cleanup_component_descriptor(struct ecs_service *ecs,
                                          struct component_descriptor *descriptor)
 {
     list_destroy(&descriptor->instances);
+    string_destroy(descriptor->name);
 }
 
 static void deallocate_service(struct ecs_service *ecs)
@@ -107,22 +110,37 @@ void entity_destroy(struct ecs_service *ecs, struct entity *entity)
     list_remove(&ecs->entities, entity);
 }
 
+static struct component_reference init_component_instance(struct component *instance,
+                                                          struct entity *entity,
+                                                          struct component_descriptor *descriptor)
+{
+    instance->entity    = entity;
+    instance->transform = entity->transform;
+
+    if (descriptor->init)
+        descriptor->init(instance, descriptor->callback_data);
+
+    if (descriptor->entered_tree)
+        descriptor->entered_tree(instance, descriptor->callback_data);
+
+    struct component_reference ref = {
+        .descriptor = descriptor,
+        .instance   = instance
+    };
+
+    return ref;
+}
+
 void *component_instance(struct ecs_service *ecs, struct entity *entity, const char *component)
 {
-    struct component_descriptor *descriptor = 0;
-
-    list_for_each (struct component_descriptor, iter, ecs->components) {
-        if (string_eq_ptr(iter->name.chars, component)) {
-            descriptor = iter;
-            break;
-        }
-    }
+    struct component_descriptor *descriptor = component_match_descriptor(ecs, component);
 
 #ifdef DEBUG
     if (!descriptor) {
         debug_log(
             SEVERITY_ERROR,
-            "Failed to create component. Component descriptor for \"%s\" was not found.",
+            "Failed to instance '%s' on '%s'. Component descriptor could not be matched.",
+            entity->name.chars,
             component
         );
 
@@ -131,17 +149,7 @@ void *component_instance(struct ecs_service *ecs, struct entity *entity, const c
 #endif
 
     struct component *instance = list_alloc(&descriptor->instances);
-
-    instance->entity    = entity;
-    instance->transform = entity->transform;
-
-    descriptor->init(instance, descriptor->callback_data);
-    descriptor->entered_tree(instance, descriptor->callback_data);
-
-    struct component_reference ref = {
-        .descriptor = descriptor,
-        .instance   = instance
-    };
+    struct component_reference ref = init_component_instance(instance, entity, descriptor);
 
     list_push(&entity->components, &ref);
 
@@ -188,4 +196,15 @@ struct component_descriptor *component_register(struct ecs_service *ecs,
     descriptor->cleanup         = info->cleanup;
 
     return descriptor;
+}
+
+struct component_descriptor *component_match_descriptor(struct ecs_service *ecs,
+                                                        const char *component)
+{
+    list_for_each (struct component_descriptor, iter, ecs->components) {
+        if (string_eq_ptr(iter->name.chars, component))
+            return iter;
+    }
+
+    return 0;
 }

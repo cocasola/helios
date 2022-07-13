@@ -85,8 +85,6 @@ struct texture *texture_create(struct texture_service *texture_service,
         }
     }
 
-    memset(texture->pixels, 255, 5000);
-
     GLenum filter_mode_enum;
 
     switch (texture->filter_mode) {

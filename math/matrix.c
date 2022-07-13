@@ -2,7 +2,7 @@
 
 #include <soul/math/matrix.h>
 
-struct mat4x4 mul_4x4(struct mat4x4 *a, struct mat4x4 *b)
+struct mat4x4 mul4x4(struct mat4x4 *a, struct mat4x4 *b)
 {
     struct mat4x4 r;
 
@@ -29,21 +29,21 @@ struct mat4x4 mul_4x4(struct mat4x4 *a, struct mat4x4 *b)
     return r;
 }
 
-void set_pos_4x4(struct mat4x4 *m, struct vec3f pos)
+void mat4x4_set_pos(struct mat4x4 *m, struct vec3f pos)
 {
     m->m03 = pos.x;
     m->m07 = pos.y;
     m->m11 = pos.z;
 }
 
-void set_scale_4x4(struct mat4x4 *m, struct vec3f scale)
+void mat4x4_set_scale(struct mat4x4 *m, struct vec3f scale)
 {
     m->m00 = scale.x;
     m->m05 = scale.y;
     m->m10 = scale.z;
 }
 
-void set_rot_4x4(struct mat4x4 *m, struct vec3f rot)
+void mat4x4_set_rot(struct mat4x4 *m, struct vec3f rot)
 {
     struct mat4x4 tmp;
 
@@ -54,7 +54,7 @@ void set_rot_4x4(struct mat4x4 *m, struct vec3f rot)
         0, 0, 0, 1
     );
 
-    *m = mul_4x4(&tmp, m);
+    *m = mul4x4(&tmp, m);
 
     tmp = mat4x4(
         1, 0, 0, 0,
@@ -63,7 +63,7 @@ void set_rot_4x4(struct mat4x4 *m, struct vec3f rot)
         0, 0, 0, 1
     );
 
-    *m = mul_4x4(&tmp, m);
+    *m = mul4x4(&tmp, m);
 
     tmp = mat4x4(
         cos(rot.z), -sin(rot.z), 0, 0,
@@ -72,5 +72,5 @@ void set_rot_4x4(struct mat4x4 *m, struct vec3f rot)
         0, 0, 0, 1
     );
 
-    *m = mul_4x4(&tmp, m);
+    *m = mul4x4(&tmp, m);
 }

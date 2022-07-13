@@ -173,7 +173,7 @@ void shader_destroy(struct shader_service *shader_service, struct shader *shader
 
 void shader_uniform_mat4x4(uniform_t uniform, struct mat4x4 *value)
 {
-    glUniformMatrix4fv(uniform, 1, TRUE, (GLfloat *)value);
+    glUniformMatrix4fv(uniform, 1, FALSE, (GLfloat *)value);
 }
 
 void shader_uniform_vec4f(uniform_t uniform, struct vec4f value)

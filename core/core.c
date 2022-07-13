@@ -18,7 +18,9 @@ struct soul_instance *soul_init_instance(struct soul_instance_init_info *init_in
 void soul_destroy_instance(struct soul_instance *instance)
 {
     list_for_each (struct resource, resource, instance->resources) {
-        resource->deallocator(resource->p_user_data);
+        if (resource->deallocator)
+            resource->deallocator(resource->p_user_data);
+
         free(resource->p_user_data);
         string_destroy(resource->name);
     }

@@ -26,6 +26,21 @@ struct vec3f
 #define VEC3F_ONE   vec3f(1, 1, 1)
 #define VEC3F_ZERO  vec3f(0, 0, 0)
 
+static inline struct vec3f add3f(struct vec3f a, struct vec3f b)
+{
+    return vec3f(a.x + b.x, a.y + b.y, a.z + b.z);
+}
+
+static inline struct vec3f sub3f(struct vec3f a, struct vec3f b)
+{
+    return vec3f(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+
+static inline struct vec3f mul3f_s(struct vec3f v, float scalar)
+{
+    return vec3f(v.x*scalar, v.y*scalar, v.z*scalar);
+}
+
 struct vec2f
 {
     float x;

@@ -28,9 +28,9 @@ struct mat4x4
     0, 0, 0, 1                      \
 )
 
-struct mat4x4   mul_4x4(struct mat4x4 *a, struct mat4x4 *b);
-void            set_pos_4x4(struct mat4x4 *m, struct vec3f pos);
-void            set_scale_4x4(struct mat4x4 *m, struct vec3f scale);
-void            set_rot_4x4(struct mat4x4 *m, struct vec3f rot);
+struct mat4x4   mul4x4(struct mat4x4 *a, struct mat4x4 *b);
+void            mat4x4_set_pos(struct mat4x4 *m, struct vec3f pos);
+void            mat4x4_set_scale(struct mat4x4 *m, struct vec3f scale);
+void            mat4x4_set_rot(struct mat4x4 *m, struct vec3f rot);
 
 #endif // MATRIX_H

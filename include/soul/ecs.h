@@ -1,7 +1,7 @@
 #ifndef ECS_H
 #define ECS_H
 
-#include "math/vector.h"
+#include "math/transform.h"
 
 #include "list.h"
 #include "string.h"
@@ -19,13 +19,6 @@ struct entity
     struct entity *     parent;
     struct list         components; // struct component_reference
     struct list         children; // struct entity *
-};
-
-struct transform
-{
-    struct vec3f position;
-    struct vec3f rotation;
-    struct vec3f scale;
 };
 
 struct context
@@ -94,5 +87,7 @@ struct context *                context_create(struct ecs_service *ecs, const ch
 void                            context_destroy(struct ecs_service *ecs, struct context *context);
 struct component_descriptor *   component_register(struct ecs_service *ecs,
                                                    struct component_registry_info *registry_info);
+struct component_descriptor *   component_match_descriptor(struct ecs_service *ecs,
+                                                           const char *component);
 
 #endif // ECS_H

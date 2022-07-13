@@ -3,6 +3,22 @@
 #include <soul/math/vector.h>
 #include <soul/graphics/mesh.h>
 
+const struct vec3f quad_vertices[4] = {
+    vec3f(-1.0, 1.0, 0.0),
+    vec3f(1.0, 1.0, 0.0),
+    vec3f(1.0, -1.0, 0.0),
+    vec3f(-1.0, -1.0, 0.0)
+};
+
+const struct vec2f quad_uvs[4] = {
+    vec2f(0.0, 0.0),
+    vec2f(1.0, 0.0),
+    vec2f(1.0, 1.0),
+    vec2f(0.0, 1.0)
+};
+
+const size_t quad_indices[6] = { 0, 2, 3, 0, 1, 2 };
+
 static void cleanup_mesh(struct mesh *mesh)
 {
     glDeleteBuffers(ATTRIBUTE_COUNT, mesh->vbos);
@@ -32,27 +48,11 @@ static void deallocate_service(struct mesh_service *service)
 
 static struct mesh *create_quad(struct mesh_service *service)
 {
-    struct vec3f vertices[4] = {
-        vec3f(-1.0, 1.0, 0.0),
-        vec3f(1.0, 1.0, 0.0),
-        vec3f(1.0, -1.0, 0.0),
-        vec3f(-1.0, -1.0, 0.0)
-    };
-
-    struct vec2f uvs[4] = {
-        vec2f(0.0, 0.0),
-        vec2f(1.0, 0.0),
-        vec2f(1.0, 1.0),
-        vec2f(0.0, 1.0)
-    };
-
-    size_t indices[6] = { 0, 2, 3, 0, 1, 2 };
-
     struct mesh_create_info create_info = NEW_MESH_CREATE_INFO;
     create_info.name            = "quad";
-    create_info.vertices        = vertices;
-    create_info.uvs             = uvs;
-    create_info.indices         = indices;
+    create_info.vertices        = (struct vec3f *)quad_vertices;
+    create_info.uvs             = (struct vec2f *)quad_uvs;
+    create_info.indices         = (size_t *)quad_indices;
     create_info.vertex_count    = 4;
     create_info.triangle_count  = 2;
 
@@ -81,46 +81,56 @@ static void create_vertex_objects(struct mesh *mesh)
     glGenBuffers(1, &mesh->index_vbo);
 }
 
-static void buffer_vertex_data(struct mesh *mesh)
+static void buffer_indices(struct mesh *mesh)
 {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->index_vbo);
     size_t index_buffer_size = mesh->triangle_count*3*sizeof(unsigned int);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_buffer_size, mesh->indices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->vbos[ATTRIBUTE_POSITION]);
-    size_t position_buffer_size = mesh->vertex_count*sizeof(struct vec3f);
-    glBufferData(GL_ARRAY_BUFFER, position_buffer_size, mesh->vertices, GL_STATIC_DRAW);
-
-    if (mesh->uvs) {
-        glBindBuffer(GL_ARRAY_BUFFER, mesh->vbos[ATTRIBUTE_UV]);
-        size_t uv_buffer_size = mesh->vertex_count*sizeof(struct vec2f);
-        glBufferData(GL_ARRAY_BUFFER, uv_buffer_size, mesh->uvs, GL_STATIC_DRAW);
-    }
-
-    if (mesh->normals) {
-        glBindBuffer(GL_ARRAY_BUFFER, mesh->vbos[ATTRIBUTE_NORMAL]);
-        size_t normal_buffer_size = mesh->vertex_count*sizeof(struct vec3f);
-        glBufferData(GL_ARRAY_BUFFER, normal_buffer_size, mesh->normals, GL_STATIC_DRAW);
-    }
 }
 
-static void format_data(struct mesh *mesh)
+static void buffer_attribute(struct mesh *mesh, size_t vbo_index, int components, void *data)
 {
-    glBindBuffer(GL_ARRAY_BUFFER, mesh->vbos[ATTRIBUTE_POSITION]);
-    glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(struct vec3f), 0);
-    glEnableVertexAttribArray(ATTRIBUTE_POSITION);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->vbos[vbo_index]);
+    size_t buffer_size = mesh->vertex_count*components*sizeof(float);
+    glBufferData(GL_ARRAY_BUFFER, buffer_size, data, GL_STATIC_DRAW);
+}
 
-    if (mesh->uvs) {
-        glBindBuffer(GL_ARRAY_BUFFER, mesh->vbos[ATTRIBUTE_UV]);
-        glVertexAttribPointer(ATTRIBUTE_UV, 2, GL_FLOAT, GL_FALSE, sizeof(struct vec2f), 0);
-        glEnableVertexAttribArray(ATTRIBUTE_UV);
-    }
+static void buffer_attributes(struct mesh *mesh)
+{
+    buffer_attribute(mesh, ATTRIBUTE_POSITION, 3, mesh->vertices);
 
-    if (mesh->normals) {
-        glBindBuffer(GL_ARRAY_BUFFER, mesh->vbos[ATTRIBUTE_NORMAL]);
-        glVertexAttribPointer(ATTRIBUTE_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(struct vec3f), 0);
-        glEnableVertexAttribArray(ATTRIBUTE_NORMAL);
-    }
+    if (mesh->uvs)
+        buffer_attribute(mesh, ATTRIBUTE_UV, 2, mesh->uvs);
+
+    if (mesh->normals)
+        buffer_attribute(mesh, ATTRIBUTE_NORMAL, 3, mesh->normals);
+}
+
+static void format_attribute(struct mesh *mesh, size_t vbo_index, int components)
+{
+    glBindBuffer(GL_ARRAY_BUFFER, mesh->vbos[vbo_index]);
+
+    glVertexAttribPointer(
+        vbo_index,
+        components,
+        GL_FLOAT,
+        GL_FALSE,
+        components*sizeof(float),
+        0
+    );
+
+    glEnableVertexAttribArray(vbo_index);
+}
+
+static void format_attributes(struct mesh *mesh)
+{
+    format_attribute(mesh, ATTRIBUTE_POSITION, 3);
+
+    if (mesh->uvs)
+        format_attribute(mesh, ATTRIBUTE_UV, 2);
+
+    if (mesh->normals)
+        format_attribute(mesh, ATTRIBUTE_NORMAL, 3);
 }
 
 struct mesh *mesh_create(struct mesh_service *service, struct mesh_create_info *create_info)
@@ -137,8 +147,9 @@ struct mesh *mesh_create(struct mesh_service *service, struct mesh_create_info *
     mesh->read_write_enabled    = create_info->read_write_enabled;
 
     create_vertex_objects(mesh);
-    buffer_vertex_data(mesh);
-    format_data(mesh);
+    buffer_indices(mesh);
+    buffer_attributes(mesh);
+    format_attributes(mesh);
 
     if (!create_info->read_write_enabled) {
         mesh->vertices  = 0;
