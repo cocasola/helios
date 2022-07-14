@@ -66,18 +66,8 @@ static void deallocate_service(struct window_service *service)
     list_destroy(&service->windows);
 }
 
-void window_service_create_resource(struct soul_instance *soul_instance)
+static void insert_callbacks(struct soul_instance *soul_instance, struct window_service *service)
 {
-    struct window_service *service = resource_create(
-        soul_instance,
-        WINDOW_SERVICE,
-        sizeof(struct window_service),
-        (resource_deallocator_t)&deallocate_service
-    );
-
-    list_init(&service->windows, sizeof(struct window));
-    list_init(&service->hardware_acceleration_enabled_windows, sizeof(struct window *));
-
     ordered_callbacks_insert(
         &soul_instance->callbacks,
         (ordered_callback_t)&poll_events,
@@ -101,6 +91,21 @@ void window_service_create_resource(struct soul_instance *soul_instance)
         service,
         FALSE
     );
+}
+
+void window_service_create_resource(struct soul_instance *soul_instance)
+{
+    struct window_service *service = resource_create(
+        soul_instance,
+        WINDOW_SERVICE,
+        sizeof(struct window_service),
+        (resource_deallocator_t)&deallocate_service
+    );
+
+    list_init(&service->windows, sizeof(struct window));
+    list_init(&service->hardware_acceleration_enabled_windows, sizeof(struct window *));
+
+    insert_callbacks(soul_instance, service);
 
     glfwInit();
 
