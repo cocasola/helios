@@ -82,7 +82,7 @@ static struct render_cache *create_render_cache(struct ecs_service *ecs_service,
     render_cache->quad              = mesh_service->primitives.quad;
     render_cache->sprite_shader     = shader_service->defaults.sprite;
     render_cache->matrix_uniform    = shader_get_uniform(render_cache->sprite_shader, "matrix");
-    render_cache->camera_instances  = &component_match_descriptor(ecs_service, "camera")->instances;
+    render_cache->camera_instances  = &component_match_descriptor(ecs_service, CAMERA)->instances;
 
     return render_cache;
 }
