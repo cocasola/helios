@@ -9,6 +9,7 @@
 #include "../string.h"
 #include "../callbacks.h"
 #include "../math/vector.h"
+#include "user_input.h"
 
 #define WINDOW_SERVICE "window_service"
 
@@ -26,6 +27,7 @@ struct window
     int                         width;
     int                         height;
     struct vec2i                position;
+    struct user_input           input;
     bool_t                      hardware_acceleration_enabled;
     bool_t                      visible;
     struct list                 on_destroy; // struct callback, struct window *

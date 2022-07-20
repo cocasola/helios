@@ -2,6 +2,7 @@
 #include <soul/math/matrix.h>
 #include <soul/graphics/shader.h>
 #include <soul/graphics/mesh.h>
+#include <soul/graphics/texture.h>
 #include <soul/ui/ui_container.h>
 #include <soul/ui/ui_axis.h>
 
@@ -31,7 +32,7 @@ static void init(struct entity *entity, struct component_storage storage, void *
     container->draw_axis = ui_axis_get_layout_axis(container->layout);
 
     list_init(&container->children, sizeof(struct ui_element *));
-    list_init(&container->on_click, sizeof(struct callback));
+    list_init(&container->on_left_click, sizeof(struct callback));
     list_init(&container->on_resize, sizeof(struct callback));
     list_init(&container->on_move, sizeof(struct callback));
 }
@@ -61,7 +62,7 @@ static void cleanup(struct entity *entity, struct component_storage storage, voi
     struct ui_container *const container = storage.passive;
 
     list_destroy(&container->children);
-    list_destroy(&container->on_click);
+    list_destroy(&container->on_left_click);
     list_destroy(&container->on_resize);
     list_destroy(&container->on_move);
 }
@@ -71,7 +72,7 @@ static struct mat4x4 calculate_matrix(struct ui_container *container,
 {
     struct mat4x4 r = MAT4X4_IDENTITY;
 
-    float z = container->depth/(float)65535;
+    float z = -container->depth/(float)65535;
 
     mat4x4_set_pos(
         &r,
@@ -119,7 +120,14 @@ static void render_container(struct ui_container *container,
     if (container->visible) {
         struct mat4x4 matrix = calculate_matrix(container, window);
 
-        shader_uniform_int(render_cache->use_texture_uniform, FALSE);
+        bool_t use_texture = FALSE;
+
+        if (container->texture) {
+            use_texture = TRUE;
+            texture_bind(container->texture);
+        }
+
+        shader_uniform_int(render_cache->use_texture_uniform, use_texture);
         shader_uniform_vec4f(render_cache->colour_uniform, container->colour);
         shader_uniform_mat4x4(render_cache->matrix_uniform, &matrix);
 
@@ -393,4 +401,44 @@ void ui_container_set_alignment(struct ui_container *container, ui_alignment_t a
 {
     container->alignment = alignment;
     calculate_positions(container, container->depth);
+}
+
+bool_t check_bounds(struct ui_container *container, struct vec2i point)
+{
+    int left_bound = container->absolute_rect.position.x;
+    int top_bound = container->absolute_rect.position.y;
+    int right_bound = container->absolute_rect.size.x + left_bound;
+    int bottom_bound = container->absolute_rect.size.y + top_bound;
+
+    if (point.x < left_bound)
+        return FALSE;
+    if (point.x > right_bound)
+        return FALSE;
+    if (point.y < top_bound)
+        return FALSE;
+    if (point.y > bottom_bound)
+        return FALSE;
+
+    return TRUE;
+}
+
+bool_t ui_container_test_mouse(struct ui_container *container, struct mouse_state *mouse)
+{
+    if (container->ignore_mouse_test || !check_bounds(container, mouse->position))
+        return FALSE;
+
+    list_for_each (struct ui_element *, p_child, container->children) {
+        struct ui_container *child = (struct ui_container *)(*p_child);
+
+        if (child->type != UI_TYPE_CONTAINER)
+            continue;
+
+        if (ui_container_test_mouse(child, mouse))
+            return TRUE;
+    }
+
+    if (mouse->buttons[MOUSE_LEFT])
+        callbacks_dispatch(&container->on_left_click, container);
+
+    return TRUE;
 }

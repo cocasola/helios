@@ -5,6 +5,30 @@
 #include <soul/ui/window.h>
 #include <soul/graphics/core.h>
 
+static void poll_input_events(struct window *window)
+{
+    double x, y;
+    glfwGetCursorPos(window->glfw_handle, &x, &y);
+
+    window->input.mouse.delta.x = (int)x - window->input.mouse.position.x;
+    window->input.mouse.delta.y = (int)y - window->input.mouse.position.y;
+
+    window->input.mouse.position.x = (int)x;
+    window->input.mouse.position.y = (int)y;
+
+    if (window->input.mouse.delta.x || window->input.mouse.delta.y)
+        callbacks_dispatch(&window->input.on_mouse_move, window);
+
+    if (glfwGetMouseButton(window->glfw_handle, GLFW_MOUSE_BUTTON_LEFT)) {
+        if (!window->input.mouse.buttons[MOUSE_LEFT]) {
+            window->input.mouse.buttons[MOUSE_LEFT] = TRUE;
+            callbacks_dispatch(&window->input.on_left_click, window);
+        }
+    } else {
+        window->input.mouse.buttons[MOUSE_LEFT] = FALSE;
+    }
+}
+
 static void poll_events(struct window_service *service)
 {
     glfwPollEvents();
@@ -21,6 +45,8 @@ static void poll_events(struct window_service *service)
                 list_push(&to_destroy, &window);
             }
         }
+
+        poll_input_events(window);
     }
 
     list_for_each (struct window *, p_window, to_destroy) {
@@ -48,12 +74,11 @@ static void swap_buffers(struct window_service *service)
 
 static void cleanup_window(struct window *window)
 {
-    string_destroy(window->title);
-
     list_destroy(&window->on_destroy);
     list_destroy(&window->on_resize);
-
+    string_destroy(window->title);
     glfwDestroyWindow(window->glfw_handle);
+    user_input_destroy(&window->input);
 }
 
 static void deallocate_service(struct window_service *service)
@@ -129,6 +154,7 @@ struct window *window_create(struct window_service *service,
 
     list_init(&window->on_destroy, sizeof(struct callback));
     list_init(&window->on_resize, sizeof(struct callback));
+    user_input_init(&window->input);
 
     if (!window->visible)
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);

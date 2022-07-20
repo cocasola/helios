@@ -11,6 +11,7 @@ struct ui_container;
 #include "ui_rect.h"
 #include "ui_margins.h"
 #include "ui_axis.h"
+#include "user_input.h"
 
 #define UI_CONTAINER "ui_container"
 
@@ -39,16 +40,17 @@ struct ui_container
     float               hover_timer;
     float               hover_transition_time;
     bool_t              ignore_mouse_test;
-    struct list         on_click; // struct callback, struct ui_container *
+    struct list         on_left_click; // struct callback, struct ui_container *
     struct list         on_resize; // struct callback, struct ui_container *
     struct list         on_move; // struct callback, struct ui_container *
     int                 children_size;
 };
 
-void ui_container_register_component(struct soul_instance *soul_instance);
-void ui_container_set_rect(struct ui_container *container, struct ui_rect rect);
-void ui_container_calculate(struct ui_container *container);
-void ui_container_set_layout(struct ui_container *container, ui_layout_t layout);
-void ui_container_set_alignment(struct ui_container *container, ui_alignment_t alignment);
+void    ui_container_register_component(struct soul_instance *soul_instance);
+void    ui_container_set_rect(struct ui_container *container, struct ui_rect rect);
+void    ui_container_calculate(struct ui_container *container);
+void    ui_container_set_layout(struct ui_container *container, ui_layout_t layout);
+void    ui_container_set_alignment(struct ui_container *container, ui_alignment_t alignment);
+bool_t  ui_container_test_mouse(struct ui_container *container, struct mouse_state *mouse);
 
 #endif // UI_CONTAINER_H
