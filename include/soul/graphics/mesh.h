@@ -56,6 +56,7 @@ struct mesh_create_info
 struct mesh_primitives
 {
     struct mesh *quad;
+    struct mesh *ui_quad;
 };
 
 struct mesh_service

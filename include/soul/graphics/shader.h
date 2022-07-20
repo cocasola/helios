@@ -21,6 +21,7 @@ struct shader
 struct shader_defaults
 {
     struct shader *sprite;
+    struct shader *ui;
 };
 
 struct shader_service

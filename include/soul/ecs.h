@@ -19,6 +19,7 @@ struct entity
     struct entity *     parent;
     struct list         components; // struct component_reference
     struct list         children; // struct entity *
+    struct list         on_child_added; // struct callback, struct entity *
 };
 
 struct context
@@ -26,30 +27,33 @@ struct context
     struct string name;
 };
 
-#define COMPONENT struct entity *   entity;     \
-                  struct transform *transform;
-
-struct component
+struct component_storage
 {
-    COMPONENT
+    void *active;
+    void *passive;
 };
 
-typedef void(*component_callback_t)(void *instance, void *data);
+typedef void(*component_callback_t)(
+    struct entity *entity,
+    struct component_storage storage,
+    void *data
+);
 
 struct component_descriptor
 {
     struct string           name;
-    struct list             instances; // struct component
-    void *                  callback_data;
+    struct list             active_storage; // void
+    struct list             passive_storage; // void
     component_callback_t    init;
     component_callback_t    entered_tree;
     component_callback_t    cleanup;
+    void *                  callback_data;
 };
 
 struct component_reference
 {
     struct component_descriptor *   descriptor;
-    struct component *              instance;
+    struct component_storage        storage;
 };
 
 struct ecs_service
@@ -64,11 +68,12 @@ struct ecs_service
 struct component_registry_info
 {
     const char *            name;
-    void *                  callback_data;
+    size_t                  active_storage_size;
+    size_t                  passive_storage_size;
     component_callback_t    init;
     component_callback_t    entered_tree;
     component_callback_t    cleanup;
-    size_t                  struct_size;
+    void *                  callback_data;
 };
 
 void                            ecs_service_create_resource(struct soul_instance *instance);
@@ -77,12 +82,15 @@ struct entity *                 entity_create(struct ecs_service *ecs,
                                               struct context *context,
                                               struct entity *parent);
 void                            entity_destroy(struct ecs_service *ecs, struct entity *entity);
-void *                          component_instance(struct ecs_service *ecs,
+struct component_storage        component_instance(struct ecs_service *ecs,
                                                    struct entity *entity,
                                                    const char *component);
 void                            component_destroy_instance(struct ecs_service *ecs,
                                                            struct entity *entity,
-                                                           void *component);
+                                                           struct component_storage storage);
+struct component_storage        component_get_storage(struct ecs_service *ecs,
+                                                      struct entity *entity,
+                                                      const char *name);
 struct context *                context_create(struct ecs_service *ecs, const char *name);
 void                            context_destroy(struct ecs_service *ecs, struct context *context);
 struct component_descriptor *   component_register(struct ecs_service *ecs,

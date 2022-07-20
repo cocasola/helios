@@ -38,9 +38,16 @@ void shader_service_create_resource(struct soul_instance *soul_instance)
         "resource/shader defaults/2d/sprite v.glsl",
         "resource/shader defaults/2d/sprite f.glsl"
     );
+
+    service->defaults.ui = shader_create(
+        service,
+        "ui",
+        "resource/shader defaults/2d/ui v.glsl",
+        "resource/shader defaults/2d/ui f.glsl"
+    );
 }
 
-static void create_gl_shaders(struct shader *shader)
+static void create_shaders(struct shader *shader)
 {
     shader->vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     shader->fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -95,7 +102,48 @@ static result_t link_program(struct shader *shader)
     return SUCCESS;
 }
 
-static void cleanup_gl_shaders(struct shader *shader)
+static char *load_shader(const char *name,
+                         const char *path)
+{
+    char *source = file_to_buffer(path, 0);
+
+    if (!source) {
+        debug_log(
+            SEVERITY_WARNING,
+            "Failed to create shader '%s'. Could not open '%s'\n",
+            name,
+            path
+        );
+
+        return 0;
+    }
+
+    return source;
+}
+
+static result_t load_and_compile(struct shader *shader,
+                                 const char *vertex_path,
+                                 const char *fragment_path)
+{
+    char *vertex_source = load_shader(shader->name.chars, vertex_path);
+    char *fragment_source = load_shader(shader->name.chars, fragment_path);
+
+    if (!vertex_source || !fragment_source)
+        return FAIL;
+
+    if (!compile_shader(shader->vertex_shader, vertex_source, vertex_path))
+        return FAIL;
+
+    if (!compile_shader(shader->fragment_shader, fragment_source, fragment_path))
+        return FAIL;
+
+    free(vertex_source);
+    free(fragment_source);
+
+    return SUCCESS;
+}
+
+static void cleanup_shaders(struct shader *shader)
 {
     glDetachShader(shader->shader_program, shader->vertex_shader);
     glDetachShader(shader->shader_program, shader->fragment_shader);
@@ -113,54 +161,16 @@ struct shader *shader_create(struct shader_service *shader_service,
 
     shader->name = string_create(name);
 
-    create_gl_shaders(shader);
-
-    char *vertex_source = file_to_buffer(vertex_path, 0);
-
-    if (!vertex_source) {
-        debug_log(
-            SEVERITY_WARNING,
-            "Failed to create shader %s. Could not open %s\n",
-            name,
-            vertex_path
-        );
-
-        return 0;
-    }
-
-    char *fragment_source = file_to_buffer(fragment_path, 0);
-
-    if (!fragment_source) {
-        debug_log(
-            SEVERITY_WARNING,
-            "Failed to create shader %s. Could not open %s\n",
-            name,
-            fragment_path
-        );
-
-        return 0;
-    }
-
-    result_t r;
-
-    r = compile_shader(shader->vertex_shader, vertex_source, vertex_path);
-    if (!r)
-        return 0;
-
-    r = compile_shader(shader->fragment_shader, fragment_source, fragment_path);
-    if (!r)
-        return 0;
-
-    free(vertex_source);
-    free(fragment_source);
-
+    create_shaders(shader);
     create_program(shader);
-    r = link_program(shader);
 
-    if (!r)
+    if (!load_and_compile(shader, vertex_path, fragment_path))
         return 0;
 
-    cleanup_gl_shaders(shader);
+    if (!link_program(shader))
+        return 0;
+
+    cleanup_shaders(shader);
 
     return shader;
 }

@@ -10,6 +10,13 @@ const struct vec3f quad_vertices[4] = {
     vec3f(-1.0, -1.0, 0.0)
 };
 
+const struct vec3f ui_quad_vertices[4] = {
+    vec3f(0.0, 0.0, 0.0),
+    vec3f(1.0, 0.0, 0.0),
+    vec3f(1.0, -1.0, 0.0),
+    vec3f(0.0, -1.0, 0.0)
+};
+
 const struct vec2f quad_uvs[4] = {
     vec2f(0.0, 0.0),
     vec2f(1.0, 0.0),
@@ -59,6 +66,19 @@ static struct mesh *create_quad(struct mesh_service *service)
     return mesh_create(service, &create_info);
 }
 
+static struct mesh *create_ui_quad(struct mesh_service *service)
+{
+    struct mesh_create_info create_info = NEW_MESH_CREATE_INFO;
+    create_info.name            = "ui_quad";
+    create_info.vertices        = (struct vec3f *)ui_quad_vertices;
+    create_info.uvs             = (struct vec2f *)quad_uvs;
+    create_info.indices         = (size_t *)quad_indices;
+    create_info.vertex_count    = 4;
+    create_info.triangle_count  = 2;
+
+    return mesh_create(service, &create_info);
+}
+
 void mesh_service_create_resource(struct soul_instance *soul_instance)
 {
     struct mesh_service *service = resource_create(
@@ -70,7 +90,8 @@ void mesh_service_create_resource(struct soul_instance *soul_instance)
 
     list_init(&service->meshes, sizeof(struct mesh));
 
-    service->primitives.quad = create_quad(service);
+    service->primitives.quad    = create_quad(service);
+    service->primitives.ui_quad = create_ui_quad(service);
 }
 
 static void create_vertex_objects(struct mesh *mesh)

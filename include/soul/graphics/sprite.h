@@ -8,9 +8,8 @@
 
 struct sprite
 {
-    COMPONENT
-
-    struct texture *texture;
+    struct transform *  transform;
+    struct texture *    texture;
 };
 
 void sprite_register_component(struct soul_instance *soul_instance);

@@ -1,12 +1,17 @@
 #include <soul/ecs.h>
 #include <soul/debug.h>
+#include <soul/callbacks.h>
 
-static void destroy_component_instance(struct component_reference ref)
+static void destroy_component_instance(struct entity *entity, struct component_reference ref)
 {
     if (ref.descriptor->cleanup)
-        ref.descriptor->cleanup(ref.instance, ref.descriptor->callback_data);
+        ref.descriptor->cleanup(entity, ref.storage, ref.descriptor->callback_data);
 
-    list_remove(&ref.descriptor->instances, ref.instance);
+    if (ref.descriptor->active_storage.data_size)
+        list_remove(&ref.descriptor->active_storage, ref.storage.active);
+
+    if (ref.descriptor->passive_storage.data_size)
+        list_remove(&ref.descriptor->passive_storage, ref.storage.passive);
 }
 
 static void cleanup_entity(struct ecs_service *ecs, struct entity *entity)
@@ -15,11 +20,12 @@ static void cleanup_entity(struct ecs_service *ecs, struct entity *entity)
     list_remove(&ecs->transforms, entity->transform);
 
     list_for_each (struct component_reference, ref, entity->components) {
-        destroy_component_instance(*ref);
+        destroy_component_instance(entity, *ref);
     }
 
     list_destroy(&entity->children);
     list_destroy(&entity->components);
+    list_destroy(&entity->on_child_added);
 }
 
 static void cleanup_context(struct ecs_service *ecs, struct context *context)
@@ -30,7 +36,12 @@ static void cleanup_context(struct ecs_service *ecs, struct context *context)
 static void cleanup_component_descriptor(struct ecs_service *ecs,
                                          struct component_descriptor *descriptor)
 {
-    list_destroy(&descriptor->instances);
+    if (descriptor->active_storage.data_size)
+        list_destroy(&descriptor->active_storage);
+
+    if (descriptor->passive_storage.data_size)
+        list_destroy(&descriptor->passive_storage);
+
     string_destroy(descriptor->name);
 }
 
@@ -92,6 +103,7 @@ struct entity *entity_create(struct ecs_service *ecs,
 
     list_init(&entity->components, sizeof(struct component_reference));
     list_init(&entity->children, sizeof(struct enitity *));
+    list_init(&entity->on_child_added, sizeof(struct callback));
 
     return entity;
 }
@@ -110,28 +122,27 @@ void entity_destroy(struct ecs_service *ecs, struct entity *entity)
     list_remove(&ecs->entities, entity);
 }
 
-static struct component_reference init_component_instance(struct component *instance,
+static struct component_reference init_component_instance(struct component_storage storage,
                                                           struct entity *entity,
                                                           struct component_descriptor *descriptor)
 {
-    instance->entity    = entity;
-    instance->transform = entity->transform;
-
     if (descriptor->init)
-        descriptor->init(instance, descriptor->callback_data);
+        descriptor->init(entity, storage, descriptor->callback_data);
 
     if (descriptor->entered_tree)
-        descriptor->entered_tree(instance, descriptor->callback_data);
+        descriptor->entered_tree(entity, storage, descriptor->callback_data);
 
     struct component_reference ref = {
         .descriptor = descriptor,
-        .instance   = instance
+        .storage    = storage
     };
 
     return ref;
 }
 
-void *component_instance(struct ecs_service *ecs, struct entity *entity, const char *component)
+struct component_storage component_instance(struct ecs_service *ecs,
+                                            struct entity *entity,
+                                            const char *component)
 {
     struct component_descriptor *descriptor = component_match_descriptor(ecs, component);
 
@@ -148,24 +159,45 @@ void *component_instance(struct ecs_service *ecs, struct entity *entity, const c
     }
 #endif
 
-    struct component *instance = list_alloc(&descriptor->instances);
-    struct component_reference ref = init_component_instance(instance, entity, descriptor);
+    struct component_storage storage = {
+        (descriptor->active_storage.data_size) ? list_alloc(&descriptor->active_storage) : 0,
+        (descriptor->passive_storage.data_size) ? list_alloc(&descriptor->passive_storage) : 0,
+    };
+
+    struct component_reference ref = init_component_instance(storage, entity, descriptor);
 
     list_push(&entity->components, &ref);
 
-    return instance;
+    return storage;
 }
 
-void component_destroy_instance(struct ecs_service *ecs, struct entity *entity, void *component)
+void component_destroy_instance(struct ecs_service *ecs,
+                                struct entity *entity,
+                                struct component_storage storage)
 {
     list_for_each (struct component_reference, ref, entity->components) {
-        if (ref->instance == component) {
-            destroy_component_instance(*ref);
+        if (ref->storage.active == storage.active &&
+            ref->storage.passive == storage.passive) {
+            destroy_component_instance(entity, *ref);
             list_remove(&entity->components, ref);
 
-            break;
+            return;
         }
     }
+}
+
+struct component_storage component_get_storage(struct ecs_service *ecs,
+                                               struct entity *entity,
+                                               const char *name)
+{
+    struct component_descriptor *descriptor = component_match_descriptor(ecs, name);
+
+    list_for_each (struct component_reference, ref, entity->components) {
+        if (ref->descriptor == descriptor)
+            return ref->storage;
+    }
+
+    return (struct component_storage){ 0, 0 };
 }
 
 struct context *context_create(struct ecs_service *ecs, const char *name)
@@ -187,7 +219,11 @@ struct component_descriptor *component_register(struct ecs_service *ecs,
 {
     struct component_descriptor *descriptor = list_alloc(&ecs->components);
 
-    list_init(&descriptor->instances, info->struct_size);
+    if (info->passive_storage_size)
+        list_init(&descriptor->passive_storage, info->passive_storage_size);
+
+    if (info->active_storage_size)
+        list_init(&descriptor->active_storage, info->active_storage_size);
 
     descriptor->name            = string_create(info->name);
     descriptor->callback_data   = info->callback_data;

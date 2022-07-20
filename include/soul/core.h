@@ -6,6 +6,7 @@ struct soul_instance;
 #include "resource.h"
 #include "list.h"
 #include "ordered_callbacks.h"
+#include "execution_order.h"
 
 struct soul_instance
 {

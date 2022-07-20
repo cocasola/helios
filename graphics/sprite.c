@@ -10,9 +10,9 @@
 struct render_cache
 {
     struct list *                   camera_instances;
-    struct component_descriptor *   descriptor;
+    struct list *                   sprite_instances;
     struct mesh *                   quad;
-    struct shader *                 sprite_shader;
+    struct shader *                 shader;
     uniform_t                       matrix_uniform;
 };
 
@@ -31,8 +31,8 @@ static struct mat4x4 calculate_matrix(struct transform *camera_transform,
     mat4x4_set_scale(
         &scale_matrix,
         vec3f(
-            1.0/camera->render_target.width/camera->size,
-            1.0/camera->render_target.height/camera->size,
+            1.0/camera->render_target->width/camera->size,
+            1.0/camera->render_target->height/camera->size,
             0
         )
     );
@@ -47,9 +47,9 @@ static void render(struct render_cache *cache)
     list_for_each (struct camera, camera, *cache->camera_instances) {
         camera_bind(camera);
 
-        list_for_each (struct sprite, sprite, cache->descriptor->instances) {
+        list_for_each (struct sprite, sprite, *cache->sprite_instances) {
             texture_bind(sprite->texture);
-            shader_bind(cache->sprite_shader);
+            shader_bind(cache->shader);
 
             struct mat4x4 matrix = calculate_matrix(
                 camera->transform,
@@ -62,6 +62,13 @@ static void render(struct render_cache *cache)
             mesh_draw(cache->quad);
         }
     }
+}
+
+static void init(struct entity *entity, struct component_storage storage, void *data)
+{
+    struct sprite *const sprite = storage.active;
+
+    sprite->transform = entity->transform;
 }
 
 static struct render_cache *create_render_cache(struct ecs_service *ecs_service,
@@ -78,11 +85,16 @@ static struct render_cache *create_render_cache(struct ecs_service *ecs_service,
         0
     );
 
-    render_cache->descriptor        = descriptor;
+    struct component_descriptor *camera_descriptor = component_match_descriptor(
+        ecs_service,
+        CAMERA
+    );
+
+    render_cache->sprite_instances  = &descriptor->active_storage;
     render_cache->quad              = mesh_service->primitives.quad;
-    render_cache->sprite_shader     = shader_service->defaults.sprite;
-    render_cache->matrix_uniform    = shader_get_uniform(render_cache->sprite_shader, "matrix");
-    render_cache->camera_instances  = &component_match_descriptor(ecs_service, CAMERA)->instances;
+    render_cache->shader            = shader_service->defaults.sprite;
+    render_cache->matrix_uniform    = shader_get_uniform(render_cache->shader, "matrix");
+    render_cache->camera_instances  = &camera_descriptor->active_storage;
 
     return render_cache;
 }
@@ -92,12 +104,9 @@ void sprite_register_component(struct soul_instance *soul_instance)
     struct ecs_service *ecs_service = resource_get(soul_instance, ECS_SERVICE);
 
     struct component_registry_info registry_info = {
-        .name           = SPRITE,
-        .callback_data  = 0,
-        .struct_size    = sizeof(struct sprite),
-        .init           = 0,
-        .entered_tree   = 0,
-        .cleanup        = 0
+        .name                   = SPRITE,
+        .active_storage_size    = sizeof(struct sprite),
+        .init                   = (component_callback_t)&init
     };
 
     struct component_descriptor *descriptor = component_register(ecs_service, &registry_info);
