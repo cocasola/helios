@@ -3,6 +3,7 @@
 #include <soul/graphics/camera.h>
 #include <soul/ui/ui_canvas.h>
 #include <soul/ui/ui_container.h>
+#include <soul/ui/ui_viewport.h>
 
 void components_register_all(struct soul_instance *soul_instance)
 {
@@ -10,4 +11,5 @@ void components_register_all(struct soul_instance *soul_instance)
     sprite_register_component(soul_instance);
     ui_canvas_register_component(soul_instance);
     ui_container_register_component(soul_instance);
+    ui_viewport_register_component(soul_instance);
 }

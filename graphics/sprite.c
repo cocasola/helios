@@ -31,8 +31,8 @@ static struct mat4x4 calculate_matrix(struct transform *camera_transform,
     mat4x4_set_scale(
         &scale_matrix,
         vec3f(
-            1.0/camera->render_target->width/camera->size,
-            1.0/camera->render_target->height/camera->size,
+            1.0/camera->render_target->texture->width/camera->size,
+            1.0/camera->render_target->texture->height/camera->size,
             0
         )
     );
@@ -66,7 +66,7 @@ static void render(struct render_cache *cache)
 
 static void init(struct entity *entity, struct component_storage storage, void *data)
 {
-    struct sprite *const sprite = storage.active;
+    struct sprite *const sprite = storage.passive;
 
     sprite->transform = entity->transform;
 }
@@ -90,11 +90,11 @@ static struct render_cache *create_render_cache(struct ecs_service *ecs_service,
         CAMERA
     );
 
-    render_cache->sprite_instances  = &descriptor->active_storage;
+    render_cache->sprite_instances  = &descriptor->passive_storage;
     render_cache->quad              = mesh_service->primitives.quad;
     render_cache->shader            = shader_service->defaults.sprite;
     render_cache->matrix_uniform    = shader_get_uniform(render_cache->shader, "matrix");
-    render_cache->camera_instances  = &camera_descriptor->active_storage;
+    render_cache->camera_instances  = &camera_descriptor->passive_storage;
 
     return render_cache;
 }
@@ -105,7 +105,7 @@ void sprite_register_component(struct soul_instance *soul_instance)
 
     struct component_registry_info registry_info = {
         .name                   = SPRITE,
-        .active_storage_size    = sizeof(struct sprite),
+        .passive_storage_size    = sizeof(struct sprite),
         .init                   = (component_callback_t)&init
     };
 

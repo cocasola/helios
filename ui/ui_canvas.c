@@ -27,7 +27,7 @@ void ui_canvas_set_window(struct ui_canvas *canvas, struct window *window)
 
     canvas->window = window;
 
-    canvas->on_left_click_handle = callbacks_subscribe(
+    canvas->on_left_click_handle = callbacks_insert(
         &canvas->window->input.on_left_click,
         (callback_t)&on_left_click,
         canvas

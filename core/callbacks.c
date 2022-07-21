@@ -1,6 +1,6 @@
 #include <soul/callbacks.h>
 
-struct callback *callbacks_subscribe(struct list *callbacks, callback_t callback, void *data)
+struct callback *callbacks_insert(struct list *callbacks, callback_t callback, void *data)
 {
     struct callback callback_struct = {
         .callback   = callback,

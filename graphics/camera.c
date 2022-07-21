@@ -2,7 +2,7 @@
 
 static void init(struct entity *entity, struct component_storage storage, void *data)
 {
-    struct camera *const camera = storage.active;
+    struct camera *const camera = storage.passive;
 
     camera->size        = 1.0;
     camera->transform   = entity->transform;
@@ -14,7 +14,7 @@ void camera_register_component(struct soul_instance *soul_instance)
 
     struct component_registry_info registry_info = {
         .name                   = CAMERA,
-        .active_storage_size    = sizeof(struct camera),
+        .passive_storage_size   = sizeof(struct camera),
         .init                   = (component_callback_t)&init,
     };
 

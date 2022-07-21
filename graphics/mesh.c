@@ -18,10 +18,10 @@ const struct vec3f ui_quad_vertices[4] = {
 };
 
 const struct vec2f quad_uvs[4] = {
-    vec2f(0.0, 0.0),
-    vec2f(1.0, 0.0),
+    vec2f(0.0, 1.0),
     vec2f(1.0, 1.0),
-    vec2f(0.0, 1.0)
+    vec2f(1.0, 0.0),
+    vec2f(0.0, 0.0)
 };
 
 const size_t quad_indices[6] = { 0, 2, 3, 0, 1, 2 };

@@ -2,7 +2,7 @@
 #define CAMERA_H
 
 #include "../ecs.h"
-#include "render_target.h"
+#include "texture.h"
 
 #define CAMERA "camera"
 

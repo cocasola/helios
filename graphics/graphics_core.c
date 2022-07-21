@@ -41,7 +41,7 @@ void graphics_service_create_resource(struct soul_instance *soul_instance)
     init_gl(soul_instance);
 }
 
-void graphics_set_clear_color(struct vec4f color)
+void graphics_set_clear_colour(struct vec4f color)
 {
     glClearColor(color.x, color.y, color.z, color.w);
 }

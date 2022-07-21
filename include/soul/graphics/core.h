@@ -10,7 +10,7 @@
 struct graphics_service {};
 
 void graphics_service_create_resource(struct soul_instance *soul_instance);
-void graphics_set_clear_color(struct vec4f color);
+void graphics_set_clear_colour(struct vec4f colour);
 void graphics_clear(void);
 
 #endif // GRAPHICS_CORE_H

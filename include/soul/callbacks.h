@@ -11,7 +11,7 @@ struct callback
     callback_t  callback;
 };
 
-struct callback *   callbacks_subscribe(struct list *callbacks, callback_t callback, void *data);
+struct callback *   callbacks_insert(struct list *callbacks, callback_t callback, void *data);
 void                callbacks_dispatch(struct list *callbacks, void *data);
 
 #endif // CALLBACKS_H
