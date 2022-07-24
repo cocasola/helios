@@ -60,6 +60,11 @@ struct vec2i
 
 #define vec2i(x, y) ((struct vec2i){ (x), (y) })
 
+static inline struct vec2i add2i(struct vec2i a, struct vec2i b)
+{
+    return vec2i(a.x + b.x, a.y + b.y);
+}
+
 #define VEC2I_ONE   vec2i(1, 1)
 #define VEC2I_ZERO  vec2i(0, 0)
 

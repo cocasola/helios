@@ -2,13 +2,13 @@
 #define UI_AXIS_H
 
 #include "../math/vector.h"
-#include "ui_container.h"
+#include "ui_layout.h"
 
-#define XOFFSET offsetof(struct vec2i, x)
-#define YOFFSET offsetof(struct vec2i, y)
+#define VEC2I_XOFFSET offsetof(struct vec2i, x)
+#define VEC2I_YOFFSET offsetof(struct vec2i, y)
 
 #define ui_axis(v, axis) (*(int *)((char *)&(v) + axis))
-#define ui_axis_p(v, axis) (*(int *)((char *)&(v) + ((axis == XOFFSET) ? YOFFSET : XOFFSET)))
+#define ui_axis_p(v, axis) (*(int *)((char *)&(v) + ((axis == VEC2I_XOFFSET) ? VEC2I_YOFFSET : VEC2I_XOFFSET)))
 
 typedef int ui_axis_t;
 
@@ -19,11 +19,11 @@ static inline ui_axis_t ui_axis_get_layout_axis(ui_layout_t layout)
     switch (layout)
     {
     case UI_LAYOUT_HORIZONTAL:
-        axis = XOFFSET;
+        axis = VEC2I_XOFFSET;
         break;
 
     case UI_LAYOUT_VERTICAL:
-        axis = YOFFSET;
+        axis = VEC2I_YOFFSET;
         break;
 
     default:

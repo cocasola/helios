@@ -15,6 +15,18 @@ void string_destroy(struct string string)
     free(string.chars);
 }
 
+void string_set_chars(struct string *string, const char *chars)
+{
+    free(string->chars);
+
+    int length = strlen(chars);
+
+    string->chars   = malloc(length + 1);
+    string->length  = length;
+
+    strcpy(string->chars, chars);
+}
+
 bool_t string_eq_ptr(const char *a, const char *b)
 {
     return strcmp(a, b) == 0;

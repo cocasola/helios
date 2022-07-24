@@ -49,7 +49,7 @@ static void cleanup_texture(struct texture *texture)
 {
     glDeleteTextures(1, &texture->gl_texture);
 
-    if (texture->read_write_enabled)
+    if (texture->read_write_enabled && !texture->no_memory_manage)
         free(texture->pixels);
 
     string_destroy(texture->name);
@@ -82,6 +82,29 @@ void texture_service_create_resource(struct soul_instance *soul_instance)
     list_init(&service->render_targets, sizeof(struct render_target));
 }
 
+static void flip_texture(struct texture *texture)
+{
+    int pixel_size = texture->channel_count*sizeof(unsigned char);
+    unsigned char *buffer = malloc(pixel_size*texture->width*texture->height);
+
+    for (int i = 0; i < texture->height; ++i) {
+        int i_flipped = (texture->height - 1) - i;
+
+        memcpy(
+            buffer + pixel_size*texture->width*i_flipped,
+            texture->pixels + pixel_size*texture->width*i,
+            pixel_size*texture->width
+        );
+    }
+
+    if (!texture->no_memory_manage)
+        free(texture->pixels);
+    else
+        texture->no_memory_manage = FALSE;
+
+    texture->pixels = buffer;
+}
+
 GLenum get_gl_filtermode_enum(texture_filtermode_t filter_mode)
 {
     switch (filter_mode) {
@@ -102,7 +125,7 @@ GLenum get_gl_channel_enum(int channel_count)
             return GL_RED;
             break;
 
-        case 2:
+        case 3:
             return GL_RGB;
             break;
 
@@ -116,6 +139,8 @@ static void create_gl_resource(struct texture *texture, struct texture_create_in
 {
     GLenum filter_mode_enum = get_gl_filtermode_enum(texture->filter_mode);
     GLenum channel_enum = get_gl_channel_enum(texture->channel_count);
+
+    glPixelStorei(GL_UNPACK_ALIGNMENT, create_info->row_alignment);
 
     glGenTextures(1, &texture->gl_texture);
     glBindTexture(GL_TEXTURE_2D, texture->gl_texture);
@@ -153,6 +178,7 @@ struct texture *texture_create(struct texture_service *texture_service,
     texture->height             = create_info->height;
     texture->channel_count      = create_info->channel_count;
     texture->filter_mode        = create_info->filter_mode;
+    texture->pixels             = create_info->pixels;
 
     if (create_info->resource_path) {
         texture->pixels = load_image(
@@ -166,12 +192,15 @@ struct texture *texture_create(struct texture_service *texture_service,
 
         if (!texture->pixels)
             return 0;
+    } else {
+        if (create_info->flip)
+            flip_texture(texture);
     }
 
     create_gl_resource(texture, create_info);
 
-    if (!create_info->read_write_enabled && create_info->resource_path) {
-        stbi_image_free(texture->pixels);
+    if (!create_info->read_write_enabled && !create_info->no_memory_manage) {
+        free(texture->pixels);
         texture->pixels = 0;
     }
 
@@ -191,6 +220,8 @@ void texture_resize(struct texture *texture, int width, int height)
 
     if (!texture->no_memory_manage)
         free(texture->pixels);
+    else
+        texture->no_memory_manage = TRUE;
 
     size_t bytes = width*height*texture->channel_count*sizeof(unsigned char);
     texture->pixels = calloc(1, bytes);
@@ -245,6 +276,8 @@ static void create_fbo(struct render_target *render_target,
             "Failed to create render_target '%s'. Invalid framebuffer.\n",
             info->name
         );
+
+        abort();
     }
 #endif // DEBUG
 
@@ -265,6 +298,8 @@ struct render_target *render_target_create(struct texture_service *texture_servi
     texture_create_info.height             = info->height;
     texture_create_info.name               = info->name;
     texture_create_info.read_write_enabled = FALSE;
+    texture_create_info.generate_mip_maps  = FALSE;
+    texture_create_info.flip               = FALSE;
 
     render_target->texture = texture_create(texture_service, &texture_create_info);
 

@@ -36,6 +36,7 @@ struct texture_create_info
     const char *            name;
     const char *            resource_path;
     unsigned char *         pixels;
+    int                     row_alignment;
     int                     width;
     int                     height;
     int                     channel_count;
@@ -50,10 +51,11 @@ struct texture_create_info
     .name               = "texture",                            \
     .resource_path      = 0,                                    \
     .pixels             = 0,                                    \
+    .row_alignment      = 1,                                    \
     .width              = 0,                                    \
     .height             = 0,                                    \
     .channel_count      = 0,                                    \
-    .generate_mip_maps  = FALSE,                                \
+    .generate_mip_maps  = TRUE,                                 \
     .filter_mode        = TEXTURE_FILTERMODE_LINEAR,            \
     .read_write_enabled = FALSE,                                \
     .no_memory_manage   = FALSE,                                \

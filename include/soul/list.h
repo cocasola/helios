@@ -21,9 +21,14 @@ struct list
 #define list_node_data(type, node)      (*(type *)(node + 1))
 #define list_node_from_data(p_data)     (((struct list_node_header *)p_data) - 1)
 
-#define list_for_each(iter_type, iter, list) \
-    for (struct list_node_header *node = (list).head; node; node = node->next) \
-    for (iter_type *iter = list_node_data_ptr(iter_type, node); iter; iter = 0)
+#define list_for_each(iter_type, iter, list)                                    \
+    for (iter_type *iter = (list).head ?                                        \
+                          list_node_data_ptr(iter_type, (list).head) :          \
+                          0;                                                    \
+         iter;                                                                  \
+         iter = list_node_from_data(iter)->next ?                               \
+                list_node_data_ptr(iter_type, list_node_from_data(iter)->next) :\
+                0)
 
 void                        list_init(struct list *list, size_t data_size);
 void                        list_destroy(struct list *list);
@@ -34,5 +39,7 @@ void                        list_remove(struct list *list, void *p_data);
 void                        list_remove_value(struct list *list, void *p_data);
 void *                      list_insert(struct list *list, void *p_after, void *p_data);
 void *                      list_insert_before(struct list *list, void *p_before, void *p_data);
+void *                      list_get_next(void *data);
+void *                      list_get_head(struct list *list);
 
 #endif // LIST_H

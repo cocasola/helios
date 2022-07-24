@@ -123,3 +123,15 @@ void *list_insert_before(struct list *list, void *p_before, void *p_data)
 
     return p_new_data;
 }
+
+void *list_get_next(void *data)
+{
+    struct list_node_header *const node = list_node_from_data(data);
+
+    return (node->next) ? list_node_data_ptr(void, node->next) : 0;
+}
+
+void *list_get_head(struct list *list)
+{
+    return list_node_data_ptr(void, list->head);
+}

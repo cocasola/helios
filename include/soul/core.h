@@ -19,7 +19,7 @@ struct soul_instance_init_info
 
 };
 
-struct soul_instance *soul_init_instance(struct soul_instance_init_info *init_info);
-void soul_destroy_instance(struct soul_instance *instance);
+struct soul_instance *  soul_init_instance(struct soul_instance_init_info *init_info);
+void                    soul_destroy_instance(struct soul_instance *instance);
 
 #endif // CORE_H

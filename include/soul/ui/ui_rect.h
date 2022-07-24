@@ -1,6 +1,8 @@
 #ifndef UI_RECT_H
 #define UI_RECT_H
 
+struct ui_rect;
+
 #include "../math/vector.h"
 #include "ui_alignment.h"
 #include "ui_axis.h"

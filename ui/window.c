@@ -29,6 +29,21 @@ static void poll_input_events(struct window *window)
     }
 }
 
+static void check_resize(struct window *window)
+{
+    int width, height;
+    glfwGetWindowSize(window->glfw_handle, &width, &height);
+
+    if (width != window->width || height != window->height) {
+        window->width = width/2*2;
+        window->height = height/2*2;
+
+        glfwSetWindowSize(window->glfw_handle, window->width, window->height);
+
+        callbacks_dispatch(&window->on_resize, window);
+    }
+}
+
 static void poll_events(struct window_service *service)
 {
     glfwPollEvents();
@@ -47,6 +62,7 @@ static void poll_events(struct window_service *service)
         }
 
         poll_input_events(window);
+        check_resize(window);
     }
 
     list_for_each (struct window *, p_window, to_destroy) {
