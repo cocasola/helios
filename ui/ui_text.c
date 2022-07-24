@@ -172,9 +172,9 @@ int ui_text_calculate_height(struct ui_container *container)
 
     list_destroy(&new_lines);
 
-    const int line_height = container->text.glyph_set->line_height;
+    const int row_height = container->text.glyph_set->height;
 
-    return line_height + new_line_count*(line_height + DEFAULT_LINE_GAP);
+    return row_height + new_line_count*(container->text.glyph_set->line_height + DEFAULT_LINE_GAP);
 }
 
 void ui_text_calculate(struct ui_container *container)

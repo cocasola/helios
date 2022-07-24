@@ -1,3 +1,4 @@
+#include <soul/math/macros.h>
 #include <soul/string.h>
 
 struct string string_create(const char *string)
@@ -25,6 +26,14 @@ void string_set_chars(struct string *string, const char *chars)
     string->length  = length;
 
     strcpy(string->chars, chars);
+}
+
+bool_t string_eq(struct string a, struct string b)
+{
+    if (a.length != b.length)
+        return FALSE;
+
+    return memcmp(a.chars, b.chars, a.length) == 0;
 }
 
 bool_t string_eq_ptr(const char *a, const char *b)
