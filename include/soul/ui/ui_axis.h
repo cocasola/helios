@@ -1,6 +1,8 @@
 #ifndef UI_AXIS_H
 #define UI_AXIS_H
 
+#include <stddef.h>
+
 #include "../math/vector.h"
 #include "ui_layout.h"
 

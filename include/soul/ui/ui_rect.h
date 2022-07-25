@@ -4,6 +4,7 @@
 struct ui_rect;
 
 #include "../math/vector.h"
+#include "../json.h"
 #include "ui_alignment.h"
 #include "ui_axis.h"
 
@@ -23,5 +24,7 @@ static inline void ui_rect_align(struct ui_rect *rect, ui_alignment_t alignment,
             break;
     }
 }
+
+void deserialize_rect(struct json_array *array, struct ui_rect *destination);
 
 #endif // UI_RECT_H

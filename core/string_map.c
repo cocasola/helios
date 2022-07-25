@@ -90,8 +90,7 @@ void *string_map_index(struct string_map *map, const char *key)
     int hash = hash_string(key, DEFAULT_PAIR_LIST_COUNT);
     struct list *pairs = map->pairs + hash;
 
-    list_for_each (struct pair, pair, *pairs)
-    {
+    list_for_each (struct pair, pair, *pairs) {
         if (string_eq_ptr(key, pair->key.chars))
             return pair->value;
     } 

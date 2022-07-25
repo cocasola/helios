@@ -74,7 +74,7 @@ static bool_t is_letter(char c)
 
 static bool_t is_number(char c)
 {
-    return c >= 48 && c <= 57;
+    return (c >= 48 && c <= 57) || c == '-' || c == '.';
 }
 
 static bool_t is_valid_string_char(char c)
@@ -237,8 +237,6 @@ static struct json_object *process_object(struct parser *parser, struct string n
             }
 
             if (*parser->cursor == '}') {
-                ++parser->cursor;
-
                 break;
             } else if (*parser->cursor == ',') {
                 ++parser->cursor;
@@ -256,6 +254,7 @@ static struct json_object *process_object(struct parser *parser, struct string n
         }
     }
 
+    ++parser->cursor;
     parser->current_element = object->parent;
 
     return object;
@@ -309,8 +308,6 @@ static struct json_array *process_array(struct parser *parser, struct string nam
             }
 
             if (*parser->cursor == ']') {
-                ++parser->cursor;
-
                 break;
             } else if (*parser->cursor == ',') {
                 ++parser->cursor;
@@ -329,6 +326,7 @@ static struct json_array *process_array(struct parser *parser, struct string nam
     }
 
     parser->current_element = array->parent;
+    ++parser->cursor;
 
     return array;
 }
@@ -342,11 +340,12 @@ static struct json_number *process_number(struct parser *parser, struct string n
     memset(string_buffer, 0, 63);
 
     for (int i = 0; i < 63; ++i) {
-        if (is_number(*parser->cursor)) {
-            string_buffer[i] = *parser->cursor;
-        } else if (*parser->cursor == '.') {
-            string_buffer[i] = *parser->cursor;
+        if (!is_number(*parser->cursor))
+            break;
 
+        string_buffer[i] = *parser->cursor;
+
+        if (*parser->cursor == '.') {
             if (number->type == JSON_NUMBER_DECIMAL) {
                 error(parser, "Unexpected token.");
 
@@ -354,8 +353,6 @@ static struct json_number *process_number(struct parser *parser, struct string n
             }
 
             number->number_type = JSON_NUMBER_DECIMAL;
-        } else {
-           break; 
         }
 
         ++parser->cursor;
@@ -566,4 +563,11 @@ static void print_number(struct json_number *number, int depth)
 void json_print_object(struct json_object *object)
 {
     print_object(object, 0);
+}
+
+void *json_object_index(struct json_object *object, const char *name)
+{
+    struct json_element **p_element = string_map_index(&object->children, name);
+
+    return p_element ? *p_element : 0;
 }

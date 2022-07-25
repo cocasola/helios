@@ -55,8 +55,8 @@ struct window_create_info
 
 #define NEW_WINDOW_CREATE_INFO ((struct window_create_info){    \
     .title                          = "soul",                   \
-    .width                          = 800,                      \
-    .height                         = 600,                      \
+    .width                          = 1280,                     \
+    .height                         = 800,                      \
     .position                       = vec2i(200, 200),          \
     .visible                        = TRUE,                     \
     .hardware_acceleration_enabled  = TRUE                      \
@@ -67,5 +67,6 @@ struct window * window_create(struct window_service *service,
                               struct window_create_info *create_info);
 void            window_destroy(struct window_service *service, struct window *window);
 void            window_bind(struct window *window);
+void            window_set_size(struct window *window, int width, int height);
 
 #endif // WINDOW_H

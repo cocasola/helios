@@ -27,21 +27,26 @@ static void init(struct entity *entity, struct component_storage storage, void *
     list_init(&container->on_move, sizeof(struct callback));
 
     ui_text_init(&container->text);
+
+    if (container->rect.size.x > 0)
+        container->absolute_rect.size.x = container->rect.size.x;
+
+    if (container->rect.size.y > 0)
+        container->absolute_rect.size.y = container->rect.size.y;
 }
 
-void link_ancestry(struct ui_container *container,
-                   struct entity *entity,
-                   struct ecs_service *ecs)
+static void link_descendants(struct ecs_service *ecs,
+                             struct ui_container *container)
 {
-    struct ui_container *parent_container = component_get_storage(
-        ecs,
-        entity->parent,
-        UI_CONTAINER
-    ).passive;
+    list_for_each (struct entity *, p_child, container->entity->children) {
+        struct ui_container *child = component_get_storage(ecs, *p_child, UI_CONTAINER).passive;
 
-    if (parent_container) {
-        list_push(&parent_container->children, &container);
-        container->parent = parent_container;
+        if (child) {
+            child->parent = container;
+            list_push(&container->children, &child);
+
+            link_descendants(ecs, child);
+        }
     }
 }
 
@@ -51,7 +56,8 @@ static void entered_tree(struct entity *entity,
 {
     struct ui_container *const container = storage.passive;
 
-    link_ancestry(container, entity, data->ecs);
+    if (!entity->parent)
+        return;
 
     struct ui_canvas *parent_canvas = component_get_storage(
         data->ecs,
@@ -61,11 +67,14 @@ static void entered_tree(struct entity *entity,
 
     if (parent_canvas) {
         parent_canvas->root_container = container;
+        link_descendants(data->ecs, container);
 
-        ui_container_set_rect(
-            container,
-            ui_rect(0, 0, parent_canvas->window->width, parent_canvas->window->height)
-        );
+        if (parent_canvas->window) {
+            ui_container_set_rect(
+                container,
+                ui_rect(0, 0, parent_canvas->window->width, parent_canvas->window->height)
+            );
+        }
     }
 }
 
@@ -124,13 +133,22 @@ void ui_container_register_component(struct soul_instance *soul_instance)
 
     callback_data->ecs = resource_get(soul_instance, ECS_SERVICE);
 
+    struct component_property_registry_info properties[] = {
+        PROPERTY(ui_container, colour, "vec4f"),
+        PROPERTY(ui_container, visible, "int"),
+        PROPERTY(ui_container, rect, "rect"),
+        PROPERTY(ui_container, layout, "int")
+    };
+
     struct component_registry_info registry_info = {
         .name                   = UI_CONTAINER,
         .passive_storage_size   = sizeof(struct ui_container),
-        .init                   = (component_callback_t)&init,
-        .entered_tree           = (component_callback_t)&entered_tree,
-        .cleanup                = (component_callback_t)&cleanup,
-        .callback_data          = callback_data
+        .callbacks.init         = (component_callback_t)&init,
+        .callbacks.entered_tree = (component_callback_t)&entered_tree,
+        .callbacks.cleanup      = (component_callback_t)&cleanup,
+        .callbacks.data         = callback_data,
+        .properties             = properties,
+        .property_count         = sizeof(properties)/sizeof(struct component_property_registry_info)
     };
 
     component_register(ecs_service, &registry_info);

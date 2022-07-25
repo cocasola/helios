@@ -76,7 +76,7 @@ static void clear(struct window_service *service)
 {
     list_for_each (struct window *, p_window, service->hardware_acceleration_enabled_windows) {
         window_bind(*p_window);
-        graphics_set_clear_colour(vec4f(0.1, 0.1, 0.12, 1.0));
+        graphics_set_clear_colour(vec4f(0.0, 0.0, 0.0, 0.0));
         graphics_clear();
     }
 }
@@ -210,4 +210,14 @@ void window_bind(struct window *window)
     glfwMakeContextCurrent(window->glfw_handle);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, window->width, window->height);
+}
+
+void window_set_size(struct window *window, int width, int height)
+{
+    window->width = width;
+    window->height = height;
+
+    glfwSetWindowSize(window->glfw_handle, window->width, window->height);
+
+    callbacks_dispatch(&window->on_resize, window);
 }

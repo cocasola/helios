@@ -15,7 +15,7 @@ void camera_register_component(struct soul_instance *soul_instance)
     struct component_registry_info registry_info = {
         .name                   = CAMERA,
         .passive_storage_size   = sizeof(struct camera),
-        .init                   = (component_callback_t)&init,
+        .callbacks.init         = (component_callback_t)&init,
     };
 
     component_register(ecs_service, &registry_info);

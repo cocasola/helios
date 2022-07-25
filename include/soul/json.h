@@ -15,9 +15,9 @@ typedef int json_number_t;
 #define JSON_NUMBER_INTEGER 0
 #define JSON_NUMBER_DECIMAL 1
 
-#define JSON_ELEMENT    json_element_t      type;   \
-                        struct string       name;   \
-                        struct json_element *parent;
+#define JSON_ELEMENT    json_element_t          type;   \
+                        struct string           name;   \
+                        struct json_element *   parent;
 
 struct json_element
 {
@@ -60,5 +60,6 @@ struct json_object
 struct json_object *json_parse_string(const char *json);
 void                json_destroy_object(struct json_object *object);
 void                json_print_object(struct json_object *object);
+void *              json_object_index(struct json_object *object, const char *name);
 
 #endif // JSON_H

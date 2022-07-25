@@ -78,7 +78,8 @@ static void on_left_click(struct window *window, struct ui_canvas *canvas)
 
 static void on_window_resize(struct window *window, struct ui_canvas *canvas)
 {
-    ui_container_set_rect(canvas->root_container, ui_rect(0, 0, window->width, window->height));
+    if (canvas->root_container)
+        ui_container_set_rect(canvas->root_container, ui_rect(0, 0, window->width, window->height));
 }
 
 void ui_canvas_set_window(struct ui_canvas *canvas, struct window *window)
@@ -101,4 +102,7 @@ void ui_canvas_set_window(struct ui_canvas *canvas, struct window *window)
         (callback_t)&on_window_resize,
         canvas
     );
+
+    if (canvas->root_container)
+        ui_container_set_rect(canvas->root_container, ui_rect(0, 0, window->width, window->height));
 }

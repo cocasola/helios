@@ -105,8 +105,8 @@ void sprite_register_component(struct soul_instance *soul_instance)
 
     struct component_registry_info registry_info = {
         .name                   = SPRITE,
-        .passive_storage_size    = sizeof(struct sprite),
-        .init                   = (component_callback_t)&init
+        .passive_storage_size   = sizeof(struct sprite),
+        .callbacks.init         = (component_callback_t)&init
     };
 
     struct component_descriptor *descriptor = component_register(ecs_service, &registry_info);

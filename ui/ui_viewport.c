@@ -29,9 +29,17 @@ static void init(struct entity *entity,
     viewport->container = component_get_storage(data->ecs, entity, UI_CONTAINER).passive;
     callbacks_insert(&viewport->container->on_resize, (callback_t)&on_resize, viewport);
 
+    int width = viewport->container->absolute_rect.size.x;
+    if (!width)
+        width = 1;
+
+    int height = viewport->container->absolute_rect.size.y;
+    if (!height)
+        height = 1;
+
     struct render_target_create_info render_target_info = NEW_RENDER_TARGET_CREATE_INFO;
-    render_target_info.width        = viewport->container->absolute_rect.size.x;
-    render_target_info.height       = viewport->container->absolute_rect.size.y;
+    render_target_info.width        = width;
+    render_target_info.height       = height;
     render_target_info.filter_mode  = TEXTURE_FILTERMODE_NEAREST;
 
     viewport->render_target = render_target_create(data->texture_service, &render_target_info);
@@ -64,8 +72,8 @@ void ui_viewport_register_component(struct soul_instance *soul_instance)
     struct component_registry_info info = {
         .name                   = UI_VIEWPORT,
         .passive_storage_size   = sizeof(struct ui_viewport),
-        .init                   = (component_callback_t)&init,
-        .callback_data          = callback_data
+        .callbacks.init         = (component_callback_t)&init,
+        .callbacks.data         = callback_data
     };
 
     struct component_descriptor *descriptor = component_register(ecs, &info);
