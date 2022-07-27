@@ -341,3 +341,15 @@ void render_target_bind(struct render_target *render_target)
     glBindFramebuffer(GL_FRAMEBUFFER, render_target->fbo);
     glViewport(0, 0, render_target->texture->width, render_target->texture->height);
 }
+
+void deserialize_texture(struct json_string *path,
+                         struct texture **p_texture,
+                         struct texture_service *service)
+{
+    struct texture_create_info texture_create_info = NEW_TEXTURE_CREATE_INFO;
+    texture_create_info.resource_path       = path->string.chars;
+    texture_create_info.generate_mip_maps   = FALSE;
+    texture_create_info.filter_mode         = TEXTURE_FILTERMODE_LINEAR;
+
+    *p_texture = texture_create(service, &texture_create_info);
+}

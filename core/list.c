@@ -133,5 +133,20 @@ void *list_get_next(void *data)
 
 void *list_get_head(struct list *list)
 {
-    return list_node_data_ptr(void, list->head);
+    if (list->head)
+        return list_node_data_ptr(void, list->head);
+    else
+        return 0;
+}
+
+void *list_index(struct list *list, int index)
+{
+    int i = 0;
+
+    list_for_each (void, iter, *list) {
+        if (index == i++)
+            return iter;
+    }
+
+    return 0;
 }

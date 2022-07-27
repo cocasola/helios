@@ -60,6 +60,6 @@ struct json_object
 struct json_object *json_parse_string(const char *json);
 void                json_destroy_object(struct json_object *object);
 void                json_print_object(struct json_object *object);
-void *              json_object_index(struct json_object *object, const char *name);
+void *              json_index_object(struct json_object *object, const char *name);
 
 #endif // JSON_H

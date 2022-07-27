@@ -1,6 +1,6 @@
 #include <soul/math/vector.h>
 
-void deserialize_vec4f(struct json_array *array, struct vec4f *destination)
+void deserialize_vec4f(struct json_array *array, struct vec4f *destination, void *data)
 {
     float *cursor = (float *)destination;
 

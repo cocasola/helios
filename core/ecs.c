@@ -27,7 +27,6 @@ static void cleanup_entity(struct ecs_service *ecs, struct entity *entity)
 
     list_destroy(&entity->children);
     list_destroy(&entity->components);
-    list_destroy(&entity->on_child_added);
 }
 
 static void cleanup_context(struct ecs_service *ecs, struct context *context)
@@ -88,7 +87,6 @@ void ecs_service_create_resource(struct soul_instance *instance)
     ecs->default_context = context_create(ecs, "default");
 
     string_map_init(&ecs->property_serializers, sizeof(struct property_serializer));
-    property_serialization_populate_table(&ecs->property_serializers);
 }
 
 struct entity *entity_create(struct ecs_service *ecs,
@@ -116,7 +114,6 @@ struct entity *entity_create(struct ecs_service *ecs,
 
     list_init(&entity->components, sizeof(struct component_reference));
     list_init(&entity->children, sizeof(struct enitity *));
-    list_init(&entity->on_child_added, sizeof(struct callback));
 
     return entity;
 }
@@ -177,7 +174,11 @@ static void parse_properties_json(struct ecs_service *ecs,
         }
 #endif // DEBUG
 
-        property->serializer.deserializer(*p_child, (char *)passive_storage + property->offset);
+        property->serializer.deserializer(
+            *p_child,
+            (char *)passive_storage + property->offset,
+            property->serializer.data
+        );
     }
 }
 
@@ -185,7 +186,7 @@ static void parse_component_json(struct ecs_service *ecs,
                                  struct entity *entity,
                                  struct json_object *component)
 {
-    struct json_string *component_name = json_object_index(component, "name");
+    struct json_string *component_name = json_index_object(component, "name");
 
     struct component_descriptor *descriptor = component_match_descriptor(
         ecs,
@@ -206,36 +207,157 @@ static void parse_component_json(struct ecs_service *ecs,
 
     struct component_storage instance = alloc_component(descriptor, entity);
 
-    struct json_object *properties = json_object_index(component, "properties");
+    struct json_object *properties = json_index_object(component, "properties");
     if (properties)
         parse_properties_json(ecs, descriptor, instance.passive, properties);
-
-    if (descriptor->init)
-        descriptor->init(entity, instance, descriptor->callback_data);
 } 
+
+static struct entity *find_entity_by_index_recursive(struct entity *entity, int index, int *i)
+{
+    if (index == *i)
+        return entity;
+
+    ++(*i);
+
+    list_for_each (struct entity *, p_child, entity->children) {
+        struct entity *child = find_entity_by_index_recursive(*p_child, index, i);
+
+        if (child)
+            return child;
+    }
+
+    return 0;
+}
+
+static void parse_override_json(struct ecs_service *ecs,
+                                struct entity *entity,
+                                struct json_object *override)
+{
+    struct json_number *index_json = json_index_object(override, "index");
+    struct json_string *name_json = json_index_object(override, "name");
+    struct json_array *component_overrides = json_index_object(override, "components");
+
+    int index = index_json->integer;
+    int iter = 0;
+
+    struct entity *to_override = find_entity_by_index_recursive(entity, index, &iter);
+
+    if (name_json)
+        entity_set_name(to_override, name_json->string.chars);
+
+    list_for_each (struct json_object *, p_component_json, component_overrides->elements) {
+        struct json_object *properties = json_index_object(*p_component_json, "properties");
+        struct json_number *component_index_json = json_index_object(*p_component_json, "index");
+
+        struct component_reference *component = list_index(
+            &to_override->components,
+            component_index_json->integer
+        );
+
+        parse_properties_json(ecs, component->descriptor, component->storage.passive, properties);
+    }
+}
 
 static struct entity *parse_json(struct ecs_service *ecs,
                                  struct json_object *json,
+                                 const char *name,
+                                 struct context *context,
+                                 struct entity *parent);
+
+static struct entity *load_entity(struct ecs_service *ecs,
+                                  const char *path,
+                                  const char *name,
+                                  struct context *context,
+                                  struct entity *parent)
+{
+    char *json_string = file_to_buffer(path, 0);
+
+#ifdef DEBUG
+    if (!json_string) {
+        debug_log(
+            SEVERITY_ERROR,
+            "Failed to load entity '%s', file could not be read.\n",
+            path
+        );
+
+        abort();
+    }
+#endif // DEBUG
+
+    struct json_object *json = json_parse_string(json_string);
+    file_free_buffer(json_string);
+
+    struct entity *entity = parse_json(ecs, json, name, context, parent);
+
+    json_destroy_object(json);
+
+    return entity;
+}
+
+static struct entity *parse_json(struct ecs_service *ecs,
+                                 struct json_object *json,
+                                 const char *name,
                                  struct context *context,
                                  struct entity *parent)
 {
-    struct json_string *name = json_object_index(json, "name");
-    struct json_array *components = json_object_index(json, "components");
-    struct json_array *children = json_object_index(json, "children");
+    struct json_string *name_json = json_index_object(json, "name");
+    struct json_string *resource_path = json_index_object(json, "resource_path");
+    struct json_array *components = json_index_object(json, "components");
 
-    struct entity *entity = entity_create(ecs, name->string.chars, context, parent);
+    struct entity *entity = 0;
 
-    list_for_each (struct json_object *, p_component_json, components->elements) {
-        parse_component_json(ecs, entity, *p_component_json);
+    if (resource_path) {
+        struct json_array *overrides = json_index_object(json, "overrides");
+
+        entity = load_entity(
+            ecs,
+            resource_path->string.chars,
+            name ? name : name_json->string.chars,
+            context,
+            parent
+        );
+
+        if (overrides) {
+            list_for_each (struct json_object *, p_override, overrides->elements) {
+                parse_override_json(ecs, entity, *p_override);
+            }
+        }
+    } else {
+        entity = entity_create(ecs, name_json->string.chars, context, parent);
+
+        struct json_array *children = json_index_object(json, "children");
+
+        if (children) {
+            list_for_each (struct json_object *, p_child, children->elements) {
+                parse_json(ecs, *p_child, 0, context, entity);
+            }
+        }
     }
 
-    if (children) {
-        list_for_each (struct json_object *, p_child, children->elements) {
-            parse_json(ecs, *p_child, context, entity);
+    if (components) {
+        list_for_each (struct json_object *, p_component, components->elements) {
+            parse_component_json(ecs, entity, *p_component);
         }
     }
 
     return entity;
+}
+
+static void initialize_components(struct entity *entity)
+{
+    list_for_each (struct component_reference, component, entity->components) {
+        if (component->descriptor->init) {
+            component->descriptor->init(
+                entity,
+                component->storage,
+                component->descriptor->callback_data
+            );
+        }
+    }
+
+    list_for_each (struct entity *, p_child, entity->children) {
+        initialize_components(*p_child);
+    }
 }
 
 static void entered_tree(struct entity *entity)
@@ -260,30 +382,33 @@ struct entity *entity_load(struct ecs_service *ecs,
                            struct context *context,
                            struct entity *parent)
 {
-    char *json_string = file_to_buffer(path, 0);
+    struct entity *entity = load_entity(ecs, path, 0, context, parent);
 
-#ifdef DEBUG
-    if (!json_string) {
-        debug_log(
-            SEVERITY_ERROR,
-            "Failed to load entity '%s', file could not be read.\n",
-            path
-        );
-
-        abort();
-    }
-#endif // DEBUG
-
-    struct json_object *json = json_parse_string(json_string);
-    file_free_buffer(json_string);
-
-    struct entity *entity = parse_json(ecs, json, context, parent);
-
-    json_destroy_object(json);
-
+    initialize_components(entity);
     entered_tree(entity);
 
     return entity;
+}
+
+void entity_set_name(struct entity *entity, const char *name)
+{
+    string_destroy(entity->name);
+    entity->name = string_create(name);
+}
+
+struct entity *entity_find_child_recursive(struct entity *entity, const char *child)
+{
+    list_for_each (struct entity *, p_child, entity->children) {
+        if (string_eq_ptr(child, (*p_child)->name.chars)) {
+            return *p_child;
+        } else {
+            struct entity *entity = entity_find_child_recursive(*p_child, child);
+            if (entity)
+                return entity;
+        }
+    }
+
+    return 0;
 }
 
 struct component_storage component_instance(struct ecs_service *ecs,
@@ -311,7 +436,7 @@ struct component_storage component_instance(struct ecs_service *ecs,
         descriptor->init(entity, storage, descriptor->callback_data);
 
     if (descriptor->entered_tree)
-        descriptor->init(entity, storage, descriptor->callback_data);
+        descriptor->entered_tree(entity, storage, descriptor->callback_data);
 
     return storage;
 }

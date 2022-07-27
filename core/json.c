@@ -79,7 +79,7 @@ static bool_t is_number(char c)
 
 static bool_t is_valid_string_char(char c)
 {
-    return c >= 33 && c <= 126;
+    return c >= 32 && c <= 126;
 }
 
 static struct string get_string(struct parser *parser)
@@ -565,7 +565,7 @@ void json_print_object(struct json_object *object)
     print_object(object, 0);
 }
 
-void *json_object_index(struct json_object *object, const char *name)
+void *json_index_object(struct json_object *object, const char *name)
 {
     struct json_element **p_element = string_map_index(&object->children, name);
 

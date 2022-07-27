@@ -43,7 +43,7 @@ struct font_service
 {
     FT_Library              ft;
     struct texture_service *texture_service;
-    struct list             fonts; // struct font
+    struct string_map       fonts; // struct font
 };
 
 void                font_service_create_resource(struct soul_instance *soul_instance);
@@ -52,5 +52,9 @@ void                font_unload(struct font_service *service, struct font *font)
 struct glyph_set *  font_load_glyph_set(struct font_service *service,
                                         struct font *font,
                                         int height);
+
+void                deserialize_font(struct json_string *json,
+                                     struct font **font,
+                                     struct font_service *font_service);
 
 #endif // FONT_H

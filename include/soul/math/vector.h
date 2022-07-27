@@ -16,7 +16,7 @@ struct vec4f
 #define VEC4F_ONE   vec4f(1, 1, 1, 1)
 #define VEC4F_ZERO  vec4f(0, 0, 0, 0)
 
-void deserialize_vec4f(struct json_array *array, struct vec4f *destination);
+void deserialize_vec4f(struct json_array *array, struct vec4f *destination, void *data);
 
 struct vec3f
 {

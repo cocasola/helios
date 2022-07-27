@@ -11,10 +11,13 @@
 
 struct callback_data
 {
-    struct ecs_service *ecs;
+    struct ecs_service *    ecs;
+    struct font_service *   font_service;
 };
 
-static void init(struct entity *entity, struct component_storage storage, void *data)
+static void init(struct entity *entity,
+                 struct component_storage storage,
+                 struct callback_data *data)
 {
     struct ui_container *const container = storage.passive;
 
@@ -26,26 +29,36 @@ static void init(struct entity *entity, struct component_storage storage, void *
     list_init(&container->on_resize, sizeof(struct callback));
     list_init(&container->on_move, sizeof(struct callback));
 
-    ui_text_init(&container->text);
+    ui_text_init(&container->ui_text);
+
+    if (container->text_font) {
+        ui_container_set_text_font(
+            data->font_service,
+            container,
+            container->text_font,
+            container->text_size
+        );
+    }
+
+    if (container->text.chars)
+        ui_container_set_text(container, container->text.chars);
 
     if (container->rect.size.x > 0)
         container->absolute_rect.size.x = container->rect.size.x;
 
     if (container->rect.size.y > 0)
         container->absolute_rect.size.y = container->rect.size.y;
-}
 
-static void link_descendants(struct ecs_service *ecs,
-                             struct ui_container *container)
-{
-    list_for_each (struct entity *, p_child, container->entity->children) {
-        struct ui_container *child = component_get_storage(ecs, *p_child, UI_CONTAINER).passive;
+    if (entity->parent) {
+        struct ui_container *parent_container = component_get_storage(
+            data->ecs,
+            entity->parent,
+            UI_CONTAINER
+        ).passive;
 
-        if (child) {
-            child->parent = container;
-            list_push(&container->children, &child);
-
-            link_descendants(ecs, child);
+        if (parent_container) {
+            list_push(&parent_container->children, (struct ui_container **)&container);
+            container->parent = parent_container;
         }
     }
 }
@@ -67,7 +80,6 @@ static void entered_tree(struct entity *entity,
 
     if (parent_canvas) {
         parent_canvas->root_container = container;
-        link_descendants(data->ecs, container);
 
         if (parent_canvas->window) {
             ui_container_set_rect(
@@ -87,9 +99,9 @@ static void cleanup(struct entity *entity, struct component_storage storage, voi
     list_destroy(&container->on_resize);
     list_destroy(&container->on_move);
 
-    ui_text_destroy(&container->text);
+    ui_text_destroy(&container->ui_text);
 
-    string_destroy(container->text.string);
+    string_destroy(container->ui_text.string);
 }
 
 void ui_container_draw(struct ui_container *container,
@@ -117,7 +129,7 @@ void ui_container_draw(struct ui_container *container,
     mesh_draw(render_cache->quad);
 
     if (container->contains_text)
-        ui_text_draw(&container->text, container->depth, render_cache, window);
+        ui_text_draw(&container->ui_text, container->depth, render_cache, window);
 }
 
 void ui_container_register_component(struct soul_instance *soul_instance)
@@ -131,13 +143,21 @@ void ui_container_register_component(struct soul_instance *soul_instance)
         0
     );
 
-    callback_data->ecs = resource_get(soul_instance, ECS_SERVICE);
+    callback_data->ecs          = resource_get(soul_instance, ECS_SERVICE);
+    callback_data->font_service = resource_get(soul_instance, FONT_SERVICE);
 
     struct component_property_registry_info properties[] = {
         PROPERTY(ui_container, colour, "vec4f"),
         PROPERTY(ui_container, visible, "int"),
         PROPERTY(ui_container, rect, "rect"),
-        PROPERTY(ui_container, layout, "int")
+        PROPERTY(ui_container, layout, "int"),
+        PROPERTY(ui_container, texture, "texture"),
+        PROPERTY(ui_container, alignment, "int"),
+        PROPERTY(ui_container, text, "string"),
+        PROPERTY(ui_container, text_size, "int"),
+        PROPERTY(ui_container, text_font, "font"),
+        PROPERTY(ui_container, margins, "margins"),
+        PROPERTY(ui_container, separation_margin, "int")
     };
 
     struct component_registry_info registry_info = {
@@ -200,8 +220,14 @@ void ui_container_set_rect(struct ui_container *container, struct ui_rect rect)
 
 void ui_container_set_text(struct ui_container *container, const char *text)
 {
-    ui_text_set_string(&container->text, text);
-    container->contains_text = TRUE;
+    if (container->text.chars)
+        string_destroy(container->text);
+
+    ui_text_set_string(&container->ui_text, text);
+
+    container->contains_text    = TRUE;
+    container->text             = string_create(text);
+
     calculate_container(container);
 }
 
@@ -210,7 +236,7 @@ void ui_container_set_text_font(struct font_service *font_service,
                                 struct font *font,
                                 int height)
 {
-    ui_text_set_font(font_service, &container->text, font, height);
+    ui_text_set_font(font_service, &container->ui_text, font, height);
     calculate_container(container);
 }
 
@@ -222,8 +248,8 @@ static void calculate_min_size(struct ui_container *container)
         if ((*p_child)->rect.size.x == UI_MIN_SIZE || (*p_child)->rect.size.y == UI_MIN_SIZE)
             calculate_min_size(*p_child);
 
-        if (ui_axis_p((*p_child)->rect.size, container->draw_axis) == UI_MAX_SIZE) {
-            ui_axis_p((*p_child)->absolute_rect.size, container->draw_axis) = ui_axis_p(
+        if (UI_AXIS_P((*p_child)->rect.size, container->draw_axis) == UI_MAX_SIZE) {
+            UI_AXIS_P((*p_child)->absolute_rect.size, container->draw_axis) = UI_AXIS_P(
                 container->absolute_rect.size,
                 container->draw_axis
             );
@@ -240,20 +266,24 @@ static void calculate_min_size(struct ui_container *container)
         }
     }
 
-    if (container->contains_text) {
-        if (container->rect.size.x == UI_MAX_SIZE)
-            container->absolute_rect.size.x = container->parent->absolute_rect.size.x;
-
-        int height = ui_text_calculate_height(container);
-        min.y = max(min.y, height);
-    }
-
     if (container->rect.size.x == UI_MIN_SIZE || container->rect.size.y == UI_MIN_SIZE) {
-        if (container->rect.size.x == UI_MIN_SIZE)
-            container->absolute_rect.size.x = min.x;
+        if (container->rect.size.x == UI_MIN_SIZE) {
+            if (container->contains_text) {
+                int min_width = ui_text_calculate_min_width(container);
+                min.x = max(min.x, min_width);
+            }
 
-        if (container->rect.size.y == UI_MIN_SIZE)
+            container->absolute_rect.size.x = min.x;
+        }
+
+        if (container->rect.size.y == UI_MIN_SIZE) {
+            if (container->contains_text) {
+                int min_height = ui_text_calculate_height(container);
+                min.y = max(min.y, min_height);
+            }
+
             container->absolute_rect.size.y = min.y;
+        }
 
         callbacks_dispatch(&container->on_resize, container);
     }
@@ -271,16 +301,22 @@ static int max_size_process_children(struct ui_container *container, int *availa
 {
     int max_sizes = 0;
 
+    int child_count = 0;
+
     list_for_each (struct ui_container *, p_child, container->children) {
         struct ui_container *const child = (struct ui_container *)(*p_child);
 
-        if (ui_axis(child->rect.size, container->draw_axis) == UI_MAX_SIZE) {
+        if (UI_AXIS(child->rect.size, container->draw_axis) == UI_MAX_SIZE) {
             ++max_sizes;
         } else {
-            int size = ui_axis(child->absolute_rect.size, container->draw_axis);
+            int size = UI_AXIS(child->absolute_rect.size, container->draw_axis);
             *available_pixels -= size;
         }
+
+        ++child_count;
     }
+
+    *available_pixels -= max(child_count - 1, 0)*container->separation_margin;
 
     return max_sizes;
 }
@@ -293,19 +329,18 @@ static struct vec2i calculate_ui_max_size(struct ui_container *container)
     struct ui_rect draw_rect = container->absolute_rect;
     ui_margins_subtract(&draw_rect, &container->margins);
 
-    int total_available_pixels = ui_axis(draw_rect.size, container->draw_axis);
+    int total_available_pixels = UI_AXIS(draw_rect.size, container->draw_axis);
     int available_pixels = total_available_pixels;
 
     int max_sizes = max_size_process_children(container, &available_pixels);
 
-    struct vec2i max_size = container->absolute_rect.size;
+    struct vec2i max_size = draw_rect.size;
 
     const int children_size = total_available_pixels - available_pixels;
+    container->children_size = children_size;
 
-    if (max_sizes && available_pixels) {
-        ui_axis(max_size, container->draw_axis) = available_pixels/max_sizes;
-        ui_axis(container->children_size, container->draw_axis) = children_size;
-    }
+    if (max_sizes && available_pixels)
+        UI_AXIS(max_size, container->draw_axis) = available_pixels/max_sizes;
 
     return max_size;
 }
@@ -338,39 +373,17 @@ static void calculate_sizes(struct ui_container *container)
     }
 }
 
-static struct vec2i init_cursor(struct ui_container *container)
+static void calculate_positions_linear(struct ui_container *container)
 {
     struct ui_rect rect = container->absolute_rect;
     ui_margins_subtract(&rect, &container->margins);
 
-    struct vec2i cursor;
-
-    switch (container->alignment) {
-        case UI_ALIGNMENT_TOP_LEFT: ;
-            cursor = vec2i(rect.position.x, rect.position.y);
-            break;
-
-        case UI_ALIGNMENT_CENTER: ;
-            int pos = ui_axis(rect.position, container->draw_axis);
-            int pos_p = ui_axis_p(rect.position, container->draw_axis);
-
-            int size = ui_axis(rect.size, container->draw_axis);
-            int size_p = ui_axis(rect.size, container->draw_axis);
-
-            int center_p = pos_p + size_p/2;
-            int center = pos + size/2;
-
-            ui_axis_p(cursor, container->draw_axis) = center_p;
-            ui_axis(cursor, container->draw_axis) = center - ui_axis(container->children_size, container->draw_axis)/2;
-            break;
-    }
-
-    return cursor;
-}
-
-static void calculate_positions_linear(struct ui_container *container)
-{
-    struct vec2i cursor = init_cursor(container);
+    struct vec2i cursor = ui_rect_calculate_cursor(
+        &rect,
+        container->alignment,
+        container->children_size,
+        container->draw_axis
+    );
 
     list_for_each (struct ui_container *, p_child, container->children) {
         int cursor_offset = 0;
@@ -379,13 +392,13 @@ static void calculate_positions_linear(struct ui_container *container)
 
         ui_rect_align(
             &(*p_child)->absolute_rect,
-            (*p_child)->alignment,
-            (*p_child)->draw_axis
+            container->alignment,
+            container->draw_axis
         );
 
-        cursor_offset = ui_axis((*p_child)->absolute_rect.size, container->draw_axis);
+        cursor_offset = UI_AXIS((*p_child)->absolute_rect.size, container->draw_axis);
 
-        ui_axis(cursor, container->draw_axis) += cursor_offset;
+        UI_AXIS(cursor, container->draw_axis) += cursor_offset + container->separation_margin;
     }
 }
 

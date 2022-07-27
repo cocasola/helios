@@ -26,7 +26,7 @@ struct ui_container
 
     struct ui_container *   parent;
     struct list             children; // struct ui_container *
-    struct vec2i            children_size;
+    int                     children_size;
 
     struct ui_rect          rect;
     struct ui_rect          absolute_rect;
@@ -43,8 +43,11 @@ struct ui_container
     struct texture *        texture;
     bool_t                  visible;
 
-    struct ui_text          text;
+    struct string           text;
+    int                     text_size;
+    struct ui_text          ui_text;
     bool_t                  contains_text;
+    struct font *           text_font;
 
     struct vec4f            hover_colour;
     float                   hover_timer;

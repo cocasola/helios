@@ -39,7 +39,7 @@ void    ui_text_set_font(struct font_service *service,
                          struct font *font,
                          int height);
 int     ui_text_calculate_height(struct ui_container *container);
+int     ui_text_calculate_min_width(struct ui_container *container);
 void    ui_text_calculate(struct ui_container *container);
-
 
 #endif // UI_TEXT_H

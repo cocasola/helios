@@ -9,8 +9,10 @@
 #define VEC2I_XOFFSET offsetof(struct vec2i, x)
 #define VEC2I_YOFFSET offsetof(struct vec2i, y)
 
-#define ui_axis(v, axis) (*(int *)((char *)&(v) + axis))
-#define ui_axis_p(v, axis) (*(int *)((char *)&(v) + ((axis == VEC2I_XOFFSET) ? VEC2I_YOFFSET : VEC2I_XOFFSET)))
+#define UI_AXIS(v, axis) (*(int *)((char *)&(v) + axis))
+#define UI_AXIS_P(v, axis) (*(int *)((char *)&(v) + ((axis == VEC2I_XOFFSET) ? VEC2I_YOFFSET : VEC2I_XOFFSET)))
+
+#define UI_AXIS_GET_P(axis) (axis ? VEC2I_XOFFSET : VEC2I_YOFFSET)
 
 typedef int ui_axis_t;
 

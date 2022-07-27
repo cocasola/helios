@@ -20,7 +20,6 @@ struct entity
     struct entity *     parent;
     struct list         components; // struct component_reference
     struct list         children; // struct entity *
-    struct list         on_child_added; // struct callback, struct entity *
 };
 
 struct context
@@ -115,6 +114,9 @@ struct entity *                 entity_load(struct ecs_service *ecs,
                                             const char *path,
                                             struct context *context,
                                             struct entity *parent);
+void                            entity_set_name(struct entity *entity, const char *name);
+struct entity *                 entity_find_child_recursive(struct entity *entity,
+                                                            const char *child);
 struct component_storage        component_instance(struct ecs_service *ecs,
                                                    struct entity *entity,
                                                    const char *component);

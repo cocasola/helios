@@ -1,6 +1,6 @@
-#include <soul/ui/ui_rect.h>
+#include <soul/ui/ui_margins.h>
 
-void deserialize_rect(struct json_array *array, struct ui_rect *destination, void *data)
+void deserialize_margins(struct json_array *array, struct ui_margins *destination, void *data)
 {
     int *cursor = (int *)destination;
 

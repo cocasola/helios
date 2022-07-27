@@ -25,11 +25,11 @@ static void cleanup_font(struct font_service *service, struct font *font)
 
 static void deallocate_service(struct font_service *service)
 {
-    list_for_each (struct font, font, service->fonts) {
+    list_for_each (struct font, font, service->fonts.values) {
         cleanup_font(service, font);
     }
 
-    list_destroy(&service->fonts);
+    string_map_destroy(&service->fonts);
 
     unload_freetype(service);
 }
@@ -59,11 +59,11 @@ void font_service_create_resource(struct soul_instance *soul_instance)
 
     load_freetype(service);
 
-    list_init(&service->fonts, sizeof(struct font));
+    string_map_init(&service->fonts, sizeof(struct font));
     service->texture_service = resource_get(soul_instance, TEXTURE_SERVICE);
 }
 
-struct font *font_load(struct font_service *service, const char *name)
+static struct font *load_new_font(struct font_service *service, const char *name)
 {
     FT_Face face;
 
@@ -82,7 +82,7 @@ struct font *font_load(struct font_service *service, const char *name)
         return 0;
     }
 
-    struct font *font = list_alloc(&service->fonts);
+    struct font *font = string_map_alloc(&service->fonts, name);
 
     font->name = string_create(name);
     font->face = face;
@@ -91,10 +91,20 @@ struct font *font_load(struct font_service *service, const char *name)
     return font;
 }
 
+struct font *font_load(struct font_service *service, const char *name)
+{
+    struct font *font = string_map_index(&service->fonts, name);
+
+    if (font)
+        return font;
+    else
+        return load_new_font(service, name);
+}
+
 void font_unload(struct font_service *service, struct font *font)
 {
     cleanup_font(service, font);
-    list_remove(&service->fonts, font);
+    string_map_remove(&service->fonts, font->name.chars);
 }
 
 static struct texture *load_glyph_texture(struct font_service *service,
@@ -151,13 +161,20 @@ struct glyph_set *font_load_glyph_set(struct font_service *service,
     FT_Set_Pixel_Sizes(font->face, 0, height);
 
     set->line_height    = font->face->size->metrics.height/64.0;
-    set->height         = height;
     set->ascent         = font->face->size->metrics.ascender/64.0;
     set->descent        = font->face->size->metrics.descender/64.0;
+    set->height         = height;
 
     for (int c = 0; c < FONT_GLYPH_COUNT; ++c) {
         load_glyph(service, font, set, c);
     }
 
     return set;
+}
+
+void deserialize_font(struct json_string *json,
+                      struct font **font,
+                      struct font_service *font_service)
+{
+    *font = font_load(font_service, json->string.chars);
 }

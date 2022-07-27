@@ -41,5 +41,6 @@ void *                      list_insert(struct list *list, void *p_after, void *
 void *                      list_insert_before(struct list *list, void *p_before, void *p_data);
 void *                      list_get_next(void *data);
 void *                      list_get_head(struct list *list);
+void *                      list_index(struct list *list, int index);
 
 #endif // LIST_H

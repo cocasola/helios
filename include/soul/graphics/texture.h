@@ -105,4 +105,8 @@ void                    render_target_resize(struct render_target *render_target
 void                    render_target_unbind(void);
 void                    render_target_bind(struct render_target *render_target);
 
+void                    deserialize_texture(struct json_string *path,
+                                            struct texture **p_texture,
+                                            struct texture_service *service);
+
 #endif // TEXTURE_H
